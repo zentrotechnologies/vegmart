@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Customers</h5>
+
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <button class="btn btn-primary" onclick="openModal()">Add</button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Mobile</th>
+          <th>City</th>
+          <th>Type</th>
+          <th>Balance</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+
+</div>
+
+
+<!-- 🔥 MODAL -->
+<div class="modal fade" id="customerModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 id="modalTitle">Add Customer</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="hidden" id="customer_id">
+
+        <div class="row">
+          <div class="col-md-6"><input id="name" class="form-control mb-2" placeholder="Name"></div>
+          <div class="col-md-6"><input id="mobile" class="form-control mb-2" placeholder="Mobile"></div>
+
+          <div class="col-md-6"><input id="address1" class="form-control mb-2" placeholder="Address 1"></div>
+          <div class="col-md-6"><input id="address2" class="form-control mb-2" placeholder="Address 2"></div>
+
+          <div class="col-md-4"><input id="area" class="form-control mb-2" placeholder="Area"></div>
+          <div class="col-md-4"><input id="city" class="form-control mb-2" placeholder="City"></div>
+          <div class="col-md-4"><input id="pincode" class="form-control mb-2" placeholder="Pincode"></div>
+
+          <div class="col-md-6"><input id="gst" class="form-control mb-2" placeholder="GST"></div>
+
+          <div class="col-md-6">
+            <select id="type" class="form-control mb-2 select2-init">
+              <option value="b2c">B2C</option>
+              <option value="b2b">B2B</option>
+            </select>
+          </div>
+
+          <div class="col-md-6"><input id="credit_days" class="form-control mb-2" placeholder="Credit Days"></div>
+          <div class="col-md-6"><input id="balance" class="form-control mb-2" placeholder="Opening Balance"></div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let currentPage = 1;
+let isPaginationInitialized = false;
+
+// 🔹 LOAD
+$(document).ready(function(){
+    loadData(1);
+});
+
+// 🔹 LOAD DATA
+function loadData(page){
+
+    currentPage = page;
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', $("#search").val() || '');
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Customers/customer_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            let html = "";
+
+            $.each(res.results,function(i,o){
+                html += `
+                <tr>
+                    <td>${o.name}</td>
+                    <td>${o.mobile}</td>
+                    <td>${o.city}</td>
+                    <td>${o.customer_type}</td>
+                    <td>${o.outstanding_balance}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editCustomer(${o.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${o.id})">Delete</button>
+                    </td>
+                </tr>`;
+            });
+
+            $("#table_body").html(html);
+
+            if(!isPaginationInitialized){
+
+                $('#pagination-demo').twbsPagination({
+                    totalPages: Math.ceil(res.count / 10),
+                    visiblePages: 3,
+                    onPageClick: function (event, p) {
+                        if(currentPage !== p){
+                            loadData(p);
+                        }
+                    }
+                });
+
+                isPaginationInitialized = true;
+            }
+        }
+    });
+}
+
+// 🔹 SEARCH
+$("#search").on("keyup", function(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isPaginationInitialized = false;
+    loadData(1);
+});
+
+
+// 🔹 OPEN MODAL
+function openModal(){
+    $("#modalTitle").text("Add Customer");
+    $("#customer_id").val('');
+    $("input").val('');
+    $("#customerModal").modal('show');
+}
+
+
+// 🔹 EDIT
+function editCustomer(id){
+
+    $.post(hosturl + "/api/Customers/customerbyid",
+    {customerid:id, csrfmiddlewaretoken:'{{csrf_token}}'},
+    function(res){
+
+        let d = res.data;
+
+        $("#modalTitle").text("Edit Customer");
+        $("#customer_id").val(d.id);
+
+        $("#name").val(d.name);
+        $("#mobile").val(d.mobile);
+        $("#address1").val(d.address_line1);
+        $("#address2").val(d.address_line2);
+        $("#area").val(d.area);
+        $("#city").val(d.city);
+        $("#pincode").val(d.pincode);
+        $("#gst").val(d.gst_number);
+        $("#type").val(d.customer_type);
+        $("#credit_days").val(d.default_credit_days);
+        $("#balance").val(d.outstanding_balance);
+
+        $("#customerModal").modal('show');
+    });
+}
+
+
+// 🔹 SAVE (ADD + UPDATE)
+function saveCustomer(){
+
+    let id = $("#customer_id").val();
+
+    let url = id ? "/api/Customers/customerupdate" : "/api/Customers/addcustomer";
+
+    let fd = new FormData();
+
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    if(id) fd.append('customerid', id);
+
+    fd.append('name',$("#name").val());
+    fd.append('mobile',$("#mobile").val());
+    fd.append('address_line1',$("#address1").val());
+    fd.append('address_line2',$("#address2").val());
+    fd.append('area',$("#area").val());
+    fd.append('city',$("#city").val());
+    fd.append('pincode',$("#pincode").val());
+    fd.append('gst_number',$("#gst").val());
+    fd.append('customer_type',$("#type").val());
+    fd.append('default_credit_days',$("#credit_days").val());
+    fd.append('outstanding_balance',$("#balance").val());
+
+    $.ajax({
+        url: hosturl + url,
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+            if(res.response.n==1){
+                $("#customerModal").modal('hide');
+                loadData(currentPage);
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+
+
+// 🔹 DELETE
+function deleteCustomer(id){
+    swal({title:"Delete?",buttons:true}).then(ok=>{
+        if(ok){
+            $.post(hosturl + "/api/Customers/customerdelete",
+            {customerid:id, csrfmiddlewaretoken:'{{csrf_token}}'},
+            function(res){
+                if(res.response.n==1){
+                    loadData(currentPage);
+                }else{
+                    swal("Error",res.response.msg,"error");
+                }
+            });
+        }
+    });
+}
+
+</script>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="card">
+
+  <div class="d-flex justify-content-between p-2">
+    <h5>Procurement Mapping</h5>
+    <div>
+      <input id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <button class="btn btn-primary" onclick="openModal()">+ Add</button>
+    </div>
+  </div>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Factor</th>
+        <th>Wastage %</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="table_body"></tbody>
+  </table>
+
+  <ul id="pagination-demo" class="pagination-sm"></ul>
+
+</div>
+
+<!-- MODAL -->
+
+<div class="modal fade" id="mappingModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+```
+  <div class="modal-header">
+    <h5>Mapping</h5>
+    <button class="btn-close" data-bs-dismiss="modal"></button>
+  </div>
+
+  <div class="modal-body">
+
+    <input type="hidden" id="mapping_id">
+
+<label>Procurement Item</label>
+<select id="procurement_item" class="form-control "></select>
+
+<label class="mt-2">Product</label>
+<select id="product" class="form-control "></select>
+
+    <label class="mt-2">Conversion Factor</label>
+    <input id="conversion_factor" class="form-control">
+
+    <label class="mt-2">Wastage %</label>
+    <input id="wastage_percent" class="form-control">
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="save()">Save</button>
+  </div>
+
+</div>
+```
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let currentPage = 1;
+let isInit = false;
+
+$(document).ready(()=>{
+    loadDropdowns();
+    loadData(1);
+});
+
+
+function loadData(page){
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', $("#search").val());
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Procurement/variant_grouped_mapping_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            let html = "";
+
+            res.results.forEach(group => {
+
+                // PRODUCT HEADER
+                html += `
+                <tr style="background:#eef2f7;font-weight:bold;">
+                    <td colspan="5">📦 ${group.product_name}</td>
+                </tr>
+                `;
+
+                // CHILD ROWS
+                group.items.forEach(item => {
+
+                    html += `
+                    <tr>
+                        <td style="padding-left:40px;">${item.procurement_item_name}</td>
+                        <td>${item.conversion_factor}</td>
+                        <td>${item.wastage_percent}</td>
+                        <td>
+                            <button onclick="edit(${item.id})" class="btn btn-sm btn-warning">Edit</button>
+                            <button onclick="del(${item.id})" class="btn btn-sm btn-danger">Delete</button>
+                        </td>
+                    </tr>
+                    `;
+                });
+
+            });
+
+            $("#table_body").html(html);
+
+            // ================= PAGINATION =================
+            $('#pagination-demo').twbsPagination('destroy');
+
+            $('#pagination-demo').twbsPagination({
+                totalPages: Math.ceil(res.count / 10) || 1,
+                startPage: page,
+                onPageClick: function (e, p){
+                    if(p != page){
+                        loadData(p);
+                    }
+                }
+            });
+
+        }
+    });
+}
+
+
+function openModal(){
+    $("#mapping_id").val('');
+    $("input").val('');
+    $("#mappingModal").modal('show');
+}
+
+
+function save(){
+
+    let id = $("#mapping_id").val();
+    let url = id ? "mappingupdate" : "addmapping";
+
+    let fd = new FormData();
+
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('mapping_id', id);
+    fd.append('procurement_item',$("#procurement_item").val());
+    fd.append('product',$("#product").val());
+    fd.append('conversion_factor',$("#conversion_factor").val());
+    fd.append('wastage_percent',$("#wastage_percent").val());
+
+    $.ajax({
+        url: hosturl + "/api/Procurement/" + url,
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+            $("#mappingModal").modal('hide');
+
+            if(res.response.n==1){
+            swal("Success",res.response.msg,"success");
+                reload();
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+
+
+function edit(id){
+
+    $.get(hosturl + "/api/Procurement/mappinglist",
+    {csrfmiddlewaretoken:'{{csrf_token}}'},
+    function(res){
+
+        let obj = res.data.find(x=>x.id == id);
+
+        $("#mapping_id").val(obj.id);
+        $("#procurement_item").val(obj.procurement_item);
+        $("#product").val(obj.product);
+        $("#conversion_factor").val(obj.conversion_factor);
+        $("#wastage_percent").val(obj.wastage_percent);
+
+        $("#mappingModal").modal('show');
+    });
+}
+
+
+function del(id){
+
+    if(!confirm("Delete?")) return;
+
+    $.post(hosturl + "/api/Procurement/mappingdelete",
+    {
+        csrfmiddlewaretoken:'{{csrf_token}}',
+        mapping_id:id
+    },
+    function(){
+        reload();
+    });
+}
+
+
+$("#search").on("keyup", function(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(1);
+});
+
+
+function reload(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(currentPage);
+}
+function loadDropdowns(){
+
+    // PROCUREMENT ITEMS
+    $.post(hosturl + "/api/Procurement/procurementitemmasterlist", function(res){
+
+        let html = '<option value="">Select Item</option>';
+
+        res.data.forEach(o=>{
+            html += `<option value="${o.id}">${o.name}</option>`;
+        });
+
+        $("#procurement_item").html(html);
+    });
+
+
+    // PRODUCT VARIANTS
+    $.get(hosturl + "/api/Masters/productlist", function(res){
+
+        let html = '<option value="">Select Product</option>';
+
+        res.data.forEach(o=>{
+            html += `<option value="${o.id}">
+                ${o.name}
+            </option>`;
+        });
+
+        $("#product").html(html);
+    });
+}
+</script>
+
+{% endblock %}

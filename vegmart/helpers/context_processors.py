@@ -6,7 +6,7 @@ def get_session(request):
     role_id = request.session.get('role_id')
     role_name = request.session.get('role_name')
     user_name = request.session.get('user_name')
-
+    menuitems = request.session.get('menuitems')
     # Designation = request.session.get('Designation')
     # userID = request.session.get('userID')
     # userEmployeeId=request.session.get('userEmployeeId')
@@ -20,11 +20,13 @@ def get_session(request):
     
 
 
-   
+    print("hosturl",hosturl)
     return {'token':token,
             'hosturl':hosturl,
             'role_id':role_id,
             'role_name':role_name,
             'user_name':user_name,
+            'menuitems':menuitems,
+
         
             }

@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="card">
+
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Roles</h5>
+
+```
+<div>
+  <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+  <button class="btn btn-primary" onclick="openRole()">Add Role</button>
+</div>
+```
+
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Role Name</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+
+</div>
+
+<!-- 🔥 MODAL -->
+
+<div class="modal fade" id="roleModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+```
+  <div class="modal-header">
+    <h5 id="modal_title">Add Role</h5>
+    <button class="btn-close" data-bs-dismiss="modal"></button>
+  </div>
+
+  <div class="modal-body">
+
+    <input type="hidden" id="role_id">
+
+    <div class="mb-2">
+      <label>Role Name</label>
+      <input id="role_name" class="form-control">
+    </div>
+
+    <!-- 🔥 PERMISSIONS -->
+    <h6 class="mt-3">Permissions</h6>
+
+    <div style="max-height:300px;overflow:auto;">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Menu</th>
+            <th>Add</th>
+            <th>View</th>
+            <th>Edit</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="permission_table"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="saveRole()">Save</button>
+  </div>
+
+</div>
+```
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let currentPage = 1;
+let isInit = false;
+let menus = [];
+
+// 🔹 INIT
+$(document).ready(()=>{
+    loadData(1);
+    loadMenus();
+});
+
+
+// 🔹 LOAD ROLES
+function loadData(page){
+
+    currentPage = page;
+
+    $.ajax({
+        url: hosturl + "/api/User/role_list_pagination_api",
+        type: "GET",
+        success:function(res){
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                res.results.forEach(o=>{
+                    html += `
+                    <tr>
+                        <td>${o.RoleName}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editRole(${o.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRole(${o.id})">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+            }else{
+                html = `
+                <tr>
+                    <td colspan="2" class="text-center">No Data Found</td>
+                </tr>`;
+            }
+
+            $("#table_body").html(html);
+
+            // 🔥 PAGINATION
+            if(!isInit){
+
+                let totalPages = Math.ceil(res.count / 10);
+
+                $('#pagination-demo').twbsPagination({
+                    startPage: page,
+                    totalPages: totalPages || 1,
+                    visiblePages: 3,
+                    onPageClick: function (e,p){
+                        if(currentPage !== p){
+                            loadData(p);
+                        }
+                    }
+                });
+
+                isInit = true;
+            }
+        }
+    });
+}
+
+
+// 🔹 LOAD MENUS
+function loadMenus(){
+
+    $.get(hosturl + "/api/User/menu-list",{
+        csrfmiddlewaretoken:'{{csrf_token}}',
+    }, function(res){
+        menus = res.data;
+    });
+}
+
+
+// 🔹 SEARCH
+$("#search").on("keyup", function(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(1);
+});
+
+
+// =====================================================
+// 🔹 OPEN MODAL
+// =====================================================
+
+function openRole(){
+
+    $("#role_id").val('');
+    $("#role_name").val('');
+    $("#modal_title").text("Add Role");
+
+    buildPermissionTable([]);
+
+    $("#roleModal").modal('show');
+}
+
+
+// 🔹 BUILD PERMISSIONS
+function buildPermissionTable(existing){
+
+    let html = "";
+
+    menus.forEach(m=>{
+
+        let p = existing.find(x => x.menu == m.id) || {};
+
+        html += `
+        <tr>
+            <td>${m.menuItem}</td>
+
+            <td><input type="checkbox" class="perm" data-type="create" data-id="${m.id}" ${p.add ? "checked":""}></td>
+
+            <td><input type="checkbox" class="perm" data-type="read" data-id="${m.id}" ${p.view ? "checked":""}></td>
+
+            <td><input type="checkbox" class="perm" data-type="edit" data-id="${m.id}" ${p.edit ? "checked":""}></td>
+
+            <td><input type="checkbox" class="perm" data-type="delete" data-id="${m.id}" ${p.delete ? "checked":""}></td>
+        </tr>`;
+    });
+
+    $("#permission_table").html(html);
+}
+
+
+// 🔹 EDIT
+function editRole(id){
+
+    $.post(hosturl + "/api/User/rolebyid",
+    {
+        csrfmiddlewaretoken:'{{csrf_token}}',
+        roleid:id
+    },
+    function(res){
+
+        let o = res.data;
+
+        $("#role_id").val(o.id);
+        $("#role_name").val(o.RoleName);
+
+        buildPermissionTable(o.permissions);
+
+        $("#modal_title").text("Edit Role");
+
+        $("#roleModal").modal('show');
+    });
+}
+
+
+// 🔹 SAVE
+function saveRole(){
+
+    let id = $("#role_id").val();
+
+    if(!$("#role_name").val()){
+        swal("Error","Role name required","error");
+        return;
+    }
+
+    let result = [];
+
+    menus.forEach(m=>{
+
+        result.push({
+            menu_id: m.id,
+            create: $(`.perm[data-id=${m.id}][data-type=create]`).is(":checked"),
+            read: $(`.perm[data-id=${m.id}][data-type=read]`).is(":checked"),
+            edit: $(`.perm[data-id=${m.id}][data-type=edit]`).is(":checked"),
+            delete: $(`.perm[data-id=${m.id}][data-type=delete]`).is(":checked")
+        });
+
+    });
+
+    let fd = new FormData();
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('RoleName',$("#role_name").val());
+    fd.append('roleid', id);
+    fd.append('result', JSON.stringify(result));
+
+    $.ajax({
+        url: hosturl + "/api/User/roleupdate",
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            if(res.response.n==1){
+                $("#roleModal").modal('hide');
+                reloadPage();
+                swal("Success",res.response.msg,"success");
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+
+
+// 🔹 DELETE
+function deleteRole(id){
+
+    swal({
+        title:"Delete Role?",
+        icon:"warning",
+        buttons:true
+    }).then(ok=>{
+        if(ok){
+
+            $.post(hosturl + "/api/User/roledelete",
+            {
+                csrfmiddlewaretoken:'{{csrf_token}}',
+                roleid:id
+            },
+            function(res){
+                if(res.response.n==1){
+                    swal("Deleted","","success");
+                    reloadPage();
+                }else{
+                    swal("Error",res.response.msg,"error");
+                }
+            });
+
+        }
+    });
+}
+
+
+// 🔹 RELOAD
+function reloadPage(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(currentPage);
+}
+
+</script>
+
+{% endblock %}

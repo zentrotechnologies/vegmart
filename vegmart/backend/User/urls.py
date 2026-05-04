@@ -24,7 +24,6 @@ urlpatterns = [
     #menu
     path('menu-list',Menulist.as_view()),
     path('data-permission',GetPermissionData.as_view()),
-    path('User-data-permission',GetUserPermissionData.as_view()),
     
 
     #user

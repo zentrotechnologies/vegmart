@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Inventory</h5>
+
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Batch</th>
+          <th>Product Details</th>
+          <th>Quantity</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+
+</div>
+
+
+<!-- 🔥 EDIT MODAL -->
+<div class="modal fade" id="inventoryModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5>Edit Inventory</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="hidden" id="inv_id">
+
+        <div class="mb-2 d-none">
+          <label>Warehouse</label>
+          <input id="warehouse" class="form-control" readonly>
+        </div>
+
+        <div class="mb-2 d-none">
+          <label>Product</label>
+          <input id="product" class="form-control" readonly>
+        </div>
+
+        <div class="mb-2">
+          <label>Quantity</label>
+          <input id="quantity" class="form-control">
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="updateInventory()">Update</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let currentPage = 1;
+let isInit = false;
+
+// 🔹 INIT
+$(document).ready(()=>{
+    loadData(1);
+});
+
+// 🔹 LOAD DATA
+function loadData(page){
+
+    currentPage = page;
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', $("#search").val() || '');
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Inventory/inventory_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        beforeSend:function(){
+            swal({icon:"info",text:"Loading...",buttons:false});
+        },
+        success:function(res){
+
+            swal.close();
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                res.results.forEach(o=>{
+                    html += `
+                    <tr>
+                        <td>${o.batch}</td>
+                        <td>${o.product_name} ${o.pack_size} ${o.product_unit} (${o.pack_type})</td>
+                        <td>${o.quantity}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm"
+                                onclick="editInventory(${o.id}, '${o.warehouse}', '${o.product_variant}', ${o.quantity})">
+                                Edit
+                            </button>
+                            <button class="btn btn-danger btn-sm"
+                                onclick="deleteInventory(${o.id})">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+
+            }else{
+                html = `
+                <tr>
+                    <td colspan="4" class="text-center">No Data Found</td>
+                </tr>`;
+            }
+
+            $("#table_body").html(html);
+
+            // 🔥 PAGINATION FIX
+            if(!isInit){
+
+                let totalPages = Math.ceil(res.count / 10);
+
+                $('#pagination-demo').twbsPagination({
+                    startPage: page,
+                    totalPages: totalPages || 1,
+                    visiblePages: 3,
+                    onPageClick: function (e,p){
+                        if(currentPage !== p){
+                            loadData(p);
+                        }
+                    }
+                });
+
+                isInit = true;
+            }
+        }
+    });
+}
+
+// 🔹 SEARCH
+$("#search").on("keyup", function(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(1);
+});
+
+
+// =====================================================
+// 🔹 EDIT INVENTORY
+// =====================================================
+
+function editInventory(id, warehouse, product, qty){
+
+    $("#inv_id").val(id);
+    $("#warehouse").val(warehouse);
+    $("#product").val(product);
+    $("#quantity").val(qty);
+
+    $("#inventoryModal").modal('show');
+}
+
+
+// 🔹 UPDATE INVENTORY
+function updateInventory(){
+
+    let id = $("#inv_id").val();
+    let qty = $("#quantity").val();
+
+    if(!qty){
+        swal("Error","Enter quantity","error");
+        return;
+    }
+
+    $.post(hosturl + "/api/Inventory/inventoryupdate",
+    {
+        csrfmiddlewaretoken:'{{csrf_token}}',
+        inventoryid:id,
+        quantity:qty
+    },
+    function(res){
+        if(res.response.n==1){
+            $("#inventoryModal").modal('hide');
+            reloadPage();
+            swal("Success","Updated","success");
+        }else{
+            swal("Error",res.response.msg,"error");
+        }
+    });
+}
+
+// 🔹 UPDATE INVENTORY
+function deleteInventory(id){
+
+
+    $.post(hosturl + "/api/Inventory/inventorydelete",
+    {
+        csrfmiddlewaretoken:'{{csrf_token}}',
+        inventoryid:id,
+    },
+    function(res){
+        if(res.response.n==1){
+            
+            reloadPage();
+            swal("Success","Updated","success");
+        }else{
+            swal("Error",res.response.msg,"error");
+        }
+    });
+}
+
+
+// 🔹 RELOAD
+function reloadPage(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(currentPage);
+}
+
+</script>
+
+{% endblock %}

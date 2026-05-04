@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Add Category{% endblock %}
+
+{% block layout %}
+<div class="row">
+  <div class="col-xl">
+    <div class="card mb-12">
+      <div class="card-header">
+        <h5>Add Category</h5>
+      </div>
+      <div class="card-body">
+        <form>
+          {% csrf_token %}
+
+          <div class="form-floating mb-4">
+            <input type="text" class="form-control" id="name" placeholder="Category Name">
+            <label>Name</label>
+          </div>
+
+          <div class="btn btn-primary" onclick="return validation()">Submit</div>
+          <div class="btn btn-danger">Cancel</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script>
+
+
+function validation(){
+    var name = $("#name").val().trim();
+
+    if(IsValid(name)){
+        swal("Error","Enter category name","error");
+        return false;
+    }
+
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('name',name);
+
+    $.ajax({
+        url: hosturl + "/masters/add-category",
+        type:'POST',
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+            if(res.response.n==1){
+                swal("Success",res.response.msg,"success").then(()=>{
+                    window.location.href = hosturl + "/masters/category-list";
+                });
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

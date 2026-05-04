@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Vendors</h5>
+
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <button class="btn btn-primary" onclick="openVendor()">Add Vendor</button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Address</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+
+</div>
+
+
+<!-- 🔥 MODAL -->
+<div class="modal fade" id="vendorModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 id="modal_title">Add Vendor</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="hidden" id="vendor_id">
+
+        <div class="mb-2">
+          <label>Name</label>
+          <input id="name" class="form-control">
+        </div>
+
+        <div class="mb-2">
+          <label>Phone</label>
+          <input id="phone" class="form-control">
+        </div>
+
+        <div class="mb-2">
+          <label>Address</label>
+          <textarea id="address" class="form-control"></textarea>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveVendor()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let currentPage = 1;
+let isInit = false;
+
+// 🔹 INIT
+$(document).ready(()=>{
+    loadData(1);
+});
+
+// 🔹 LOAD DATA
+function loadData(page){
+
+    currentPage = page;
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', $("#search").val() || '');
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Partners/vendor_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                res.results.forEach(o=>{
+                    html += `
+                    <tr>
+                        <td>${o.name}</td>
+                        <td>${o.phone}</td>
+                        <td>${o.address}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editVendor(${o.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteVendor(${o.id})">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+            }else{
+                html = `
+                <tr>
+                    <td colspan="4" class="text-center">No Data Found</td>
+                </tr>`;
+            }
+
+            $("#table_body").html(html);
+
+            // 🔥 PAGINATION
+            if(!isInit){
+
+                let totalPages = Math.ceil(res.count / 10);
+
+                $('#pagination-demo').twbsPagination({
+                    startPage: page,
+                    totalPages: totalPages || 1,
+                    visiblePages: 3,
+                    onPageClick: function (e,p){
+                        if(currentPage !== p){
+                            loadData(p);
+                        }
+                    }
+                });
+
+                isInit = true;
+            }
+        }
+    });
+}
+
+// 🔹 SEARCH
+$("#search").on("keyup", function(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(1);
+});
+
+
+// =====================================================
+// 🔹 ADD / EDIT
+// =====================================================
+
+function openVendor(){
+
+    $("#vendor_id").val('');
+    $("#name,#phone,#address").val('');
+    $("#modal_title").text("Add Vendor");
+
+    $("#vendorModal").modal('show');
+}
+
+function editVendor(id){
+
+    $.post(hosturl + "/api/Partners/vendorbyid",
+    {
+        csrfmiddlewaretoken:'{{csrf_token}}',
+        vendorid:id
+    },
+    function(res){
+
+        let o = res.data;
+
+        $("#vendor_id").val(o.id);
+        $("#name").val(o.name);
+        $("#phone").val(o.phone);
+        $("#address").val(o.address);
+
+        $("#modal_title").text("Edit Vendor");
+
+        $("#vendorModal").modal('show');
+    });
+}
+
+
+// 🔹 SAVE (ADD + UPDATE)
+function saveVendor(){
+
+    let id = $("#vendor_id").val();
+
+    if(!$("#name").val()){
+        swal("Error","Name required","error");
+        return;
+    }
+
+    let url = id ? "/api/Partners/vendorupdate" : "/api/Partners/addvendor";
+
+    let fd = new FormData();
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('name',$("#name").val());
+    fd.append('phone',$("#phone").val());
+    fd.append('address',$("#address").val());
+
+    if(id){
+        fd.append('vendorid', id);
+    }
+
+    $.ajax({
+        url: hosturl + url,
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+            if(res.response.n==1){
+                $("#vendorModal").modal('hide');
+                reloadPage();
+                swal("Success",res.response.msg,"success");
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+
+
+// =====================================================
+// 🔹 DELETE
+// =====================================================
+
+function deleteVendor(id){
+
+    swal({
+        title:"Delete Vendor?",
+        icon:"warning",
+        buttons:true
+    }).then(ok=>{
+        if(ok){
+
+            $.post(hosturl + "/api/Partners/vendordelete",
+            {
+                csrfmiddlewaretoken:'{{csrf_token}}',
+                vendorid:id
+            },
+            function(res){
+                if(res.response.n==1){
+                    swal("Deleted","","success");
+                    reloadPage();
+                }else{
+                    swal("Error",res.response.msg,"error");
+                }
+            });
+
+        }
+    });
+}
+
+
+// 🔹 RELOAD
+function reloadPage(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit = false;
+    loadData(currentPage);
+}
+
+</script>
+
+{% endblock %}

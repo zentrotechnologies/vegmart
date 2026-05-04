@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="row">
+  <div class="col-xl">
+    <div class="card">
+      <div class="card-header">
+        <h5>Edit Category</h5>
+      </div>
+
+      <div class="card-body">
+        <form>
+          {% csrf_token %}
+
+          <div class="form-floating mb-4">
+            <input type="text" class="form-control" id="name" placeholder="Category Name" value="{{category.name}}">
+            <label>Name</label>
+          </div>
+
+          <div class="btn btn-primary" onclick="return updateCategory()">Update</div>
+          <a href="/masters/category_list" class="btn btn-danger">Cancel</a>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script>
+function updateCategory(){
+    var name = $("#name").val().trim();
+    if(IsValid(name)){
+        swal({
+            icon:"error",
+            text:"Please enter category name"
+        });
+        return false;
+    }
+
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('name',name);
+    fd.append('categoryid','{{category.id}}');
+
+    $.ajax({
+        url: hosturl + "/masters/edit-category/{{category.id}}",
+        type:'POST',
+        data:fd,
+        processData:false,
+        contentType:false,
+        beforeSend:function(){
+            swal({
+                icon:"info",
+                text:"Updating...",
+                buttons:false
+            });
+        },
+        success:function(res){
+            if(res.response.n == 1){
+                swal({
+                    icon:"success",
+                    text:res.response.msg
+                }).then(()=>{
+                    window.location.href = hosturl + "/masters/category-list";
+                });
+
+
+            }else{
+                swal({
+                    icon:"error",
+                    text:res.response.msg
+                });
+            }
+        }
+    });
+}
+</script>
+
+{% endblock %}

@@ -72,7 +72,13 @@ def extract_lat_lng_from_url(google_maps_url):
             return float(latitude), float(longitude)
     return None, None
 
-
+def to_float(val, default=0):
+    try:
+        if val in ["", None]:
+            return default
+        return float(val)
+    except:
+        return default
 
 
 

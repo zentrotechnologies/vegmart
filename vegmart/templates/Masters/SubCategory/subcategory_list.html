@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Sub Categories</h5>
+    <div class="align-content-center p-2">
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <a class="btn btn-primary mx-1" href="/masters/add-subcategory">Add</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div id="pagination-container" class="mt-3 text-center">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script>
+
+$(document).ready(function () {
+    initPagination();
+});
+
+// 🔹 INIT
+function initPagination() {
+    $('#pagination-demo').html('');
+    loadData(1);
+}
+
+// 🔹 LOAD DATA
+function loadData(page) {
+
+    let search = $('#search').val() || '';
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', search);
+    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Masters/subcategory_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData: false,
+        contentType: false,
+        beforeSend: function () {
+            swal({ icon: "info", text: "Loading...", buttons: false });
+        },
+        success: function (res) {
+            swal.close();
+
+            let html = "";
+
+            if (res.results.length > 0) {
+
+                $.each(res.results, function (i, o) {
+                    html += `
+                    <tr>
+                        <td>${o.name}</td>
+                        <td>${o.category_name}</td>
+                        <td>
+                            <a href="/masters/edit-subcategory/${o.id}" class="btn btn-warning btn-sm">Edit</a>
+                            <button onclick="delete_subcategory(${o.id})" class="btn btn-danger btn-sm">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+                $("#table_body").html(html);
+
+                // 🔥 PAGINATION SETUP
+                let totalPages = Math.ceil(res.count / 10);
+
+                $('#pagination-demo').twbsPagination('destroy');
+
+                $('#pagination-demo').twbsPagination({
+                    totalPages: totalPages,
+                    visiblePages: 3,
+                    next: 'Next',
+                    prev: 'Prev',
+                    onPageClick: function (event, p) {
+                        loadData(p);
+                    }
+                });
+
+            } else {
+                $("#table_body").html(`
+                    <tr>
+                        <td colspan="3" class="text-center">No Data Found</td>
+                    </tr>
+                `);
+            }
+        }
+    });
+}
+
+// 🔹 SEARCH
+$('#search').on('keyup', function () {
+    initPagination();
+});
+
+// 🔹 DELETE
+function delete_subcategory(id){
+    swal({
+        title:"Are you sure?",
+        text:"You want to delete it",
+        icon:"warning",
+        buttons:true
+    }).then((ok)=>{
+        if(ok){
+            $.ajax({
+                url: hosturl + "/api/Masters/subcategorydelete",
+                type:"POST",
+                data:{
+                    csrfmiddlewaretoken:'{{csrf_token}}',
+                    subcategoryid:id
+                },
+                success:function(res){
+                    if(res.response.n==1){
+                        swal("Deleted",res.response.msg,"success");
+                        initPagination(); // reload page 1
+                    }else{
+                        swal("Error",res.response.msg,"error");
+                    }
+                }
+            });
+        }
+    });
+}
+
+</script>
+{% endblock %}

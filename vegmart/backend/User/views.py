@@ -47,7 +47,7 @@ class login(GenericAPIView):
         source = request.data.get("source")
         if email is None or Password is None :
             return Response( {
-                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','ifservice_provider':False,'email':'','service_provider_details':{}},
+                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','email':'',"menuitems":[]},
                     "response":{
                     "status":"error",
                     'msg': 'Please provide email and password',
@@ -58,7 +58,7 @@ class login(GenericAPIView):
         if userexist is None:
            return Response(
                     {
-                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','ifservice_provider':False,'email':'','service_provider_details':{}},
+                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','email':'',"menuitems":[]},
                     "response":{
                     "status":"error",
                     'msg': 'This user is not found',
@@ -68,7 +68,7 @@ class login(GenericAPIView):
         elif userexist.status == False:
             return Response(
                     {
-                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','ifservice_provider':False,'email':'','service_provider_details':{}},
+                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','email':'',"menuitems":[]},
                     "response":{
                     "status":"error",
                     'msg': 'This account is deactivated',
@@ -76,11 +76,10 @@ class login(GenericAPIView):
                     }}
                            )
         else:
-            user_serializer=UserSerializer(userexist)
             p = check_password(Password,userexist.password)
             if p is False:
                 return Response({
-                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','ifservice_provider':False,'email':'','service_provider_details':{}},
+                    "data" : {'token':'','username':'','short_name':'','user_id':'','Menu':[],'role':'','role_name':'','email':'',"menuitems":[]},
                     "response":{
                     "status":"error",
                     'msg': 'Please enter correct password',
@@ -94,24 +93,13 @@ class login(GenericAPIView):
                 role =  userexist.role_id
                 role_name =  str(userexist.role)
                 ifservice_provider=False
-                service_provider_details={}
 
 
 
-                if role == 2:
-                    ifservice_provider=True
-                    service_provider_obj=ServiceProvider.objects.filter(userid=useruuid,isActive=True).first()
-                    if service_provider_obj is not None:
-                        service_provider_serializer=ServiceProviderSerializer(service_provider_obj)
-                        service_provider_details=service_provider_serializer.data
-                    else:
-                        service_provider_details={}
-                else:
-                    service_provider_details={}
 
 
 
-                print("userexist.role",userexist.role)
+
                 
                 Token = createtoken(useruuid,email,source)
                 
@@ -123,16 +111,40 @@ class login(GenericAPIView):
                     createmobiletoken = UserToken.objects.create(User=useruuid,MobileToken=Token,source=source)
                 else:
                     return Response({
-                    "data" : {'token':'','username':'','short_name':'','user_id':'','role':'','role_name':'','Menu':[],'ifservice_provider':False,'email':'','service_provider_details':{}},
-                    "response":{
-                    "status":"error",
-                    'msg': 'Please Provide Source',
-                    'n':0
-                    }
+                        "data" : {'token':'','username':'','short_name':'','user_id':'','role':'','role_name':'','Menu':[],'email':'',"menuitems":[]},
+                        "response":{
+                        "status":"error",
+                        'msg': 'Please Provide Source',
+                        'n':0
+                        }
                 })
+
+                # ================= GET MENU + PERMISSIONS =================
+                role_perms_menuids =list(RolePermissions.objects.filter(role=role,isActive=True).values_list('menu',flat=True))
+
+                print("role_perms_menuids",role_perms_menuids)
+                # permission_ser = PermissionsSerializer(permission_object,many=True)
+                menus_objs = Menu.objects.filter(isActive=True, isshown=True,id__in=role_perms_menuids).order_by('id')
+
+                menu_serializer=MenuSerializer(menus_objs,many=True)
+
+
                 
+
+
+
+
+
+
+
+
+
+
+
+
+
                 return Response({
-                    "data" : {'token':Token,'username':username,'short_name':'','user_id':useruuid,'role':role,'role_name':role_name,'ifservice_provider':ifservice_provider,'email':email,'service_provider_details':service_provider_details},
+                    "data" : {'token':Token,'username':username,'short_name':'','user_id':useruuid,'role':role,'role_name':role_name,'email':email,"menuitems":menu_serializer.data},
                     "response":{
                     "n": 1 ,
                     "msg" : "Login successful",
@@ -201,7 +213,6 @@ class forgetpasswordmail(GenericAPIView):
     def post(self,request):
         data={}
         data['email']=request.data.get('email')
-        print("request.data",request.data)
         userdata = User.objects.filter(email=data['email'],isActive=True,status=True).first()
         if userdata is not None:
             email =   data['email']
@@ -211,7 +222,7 @@ class forgetpasswordmail(GenericAPIView):
             mailMsg = EmailMessage(
                 'Forgot Password?',
                  html_mail,
-                'no-reply@mozilourislandguide.com',
+                'no-reply@vegmart.com',
                 [email],
                 )
             mailMsg.content_subtype ="html"
@@ -317,8 +328,8 @@ class addrole(GenericAPIView):
             return Response({ "data":{},"response":{"n":0,"msg":"Role already exist", "status":"error"}})
 
 class rolelist(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     def get(self,request):
         role_objs = Role.objects.filter(isActive=True).order_by('id')
         serializer = Roleserializer(role_objs,many=True)
@@ -332,8 +343,8 @@ class rolelist(GenericAPIView):
         })
     
 class role_list_pagination_api(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     pagination_class = CustomPagination
     def get(self,request):
         RoleMaster_objs = Role.objects.filter(isActive=True).order_by('id')
@@ -342,29 +353,58 @@ class role_list_pagination_api(GenericAPIView):
         return self.get_paginated_response(serializer.data)
     
 class roleupdate(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     def post(self,request):
         data={}
         id = request.data.get('roleid')
         result = []
         if 'result' in request.data.keys():
             result = json.loads(request.data.get('result'))
-        roleexist = Role.objects.filter(id=id,isActive= True).first()
-        if roleexist is not None:
+        if id is not None and id !='':
+            roleexist = Role.objects.filter(id=id,isActive= True).first()
+            if roleexist is not None:
+                data['RoleName']=request.data.get('RoleName')
+                # data['updatedBy'] =str(request.user.id)
+                if data['RoleName'] is None or data['RoleName'] =='':
+                    return Response({ "data":{},"response":{"n":0,"msg":"Please provide Role name", "status":"error"}})
+            
+                roleindata = Role.objects.filter(RoleName=data['RoleName'],isActive= True).exclude(id=id).first()
+                if roleindata is not None:
+                    return Response({"data":'',"response": {"n": 0, "msg": "Role already exist","status": "error"}})
+                else:
+                    serializer = Roleserializer(roleexist,data=data,partial=True)
+                    if serializer.is_valid():
+                        serializer.save()
+                        RolePermissions.objects.filter(role=serializer.data['id']).delete()
+                        for i in result:
+                            RolePermissions.objects.create(
+                                role = serializer.data['id'],
+                                add = i['create'],
+                                view = i['read'],
+                                edit = i['edit'],
+                                delete = i['delete'],
+                                menu= i['menu_id']
+                            )
+                        return Response({"data":serializer.data,"response": {"n": 1, "msg": "Role updated successfully","status": "success"}})
+                    else:
+                        first_key, first_value = next(iter(serializer.errors.items()))
+                        return Response({"data" : serializer.errors,"response":{"n":0,"msg":first_key+' : '+ first_value[0],"status":"error"}})  
+            else:
+                return Response({"data":'',"response": {"n": 0, "msg": "Role not found ","status": "error"}})
+        else:
             data['RoleName']=request.data.get('RoleName')
             # data['updatedBy'] =str(request.user.id)
             if data['RoleName'] is None or data['RoleName'] =='':
                 return Response({ "data":{},"response":{"n":0,"msg":"Please provide Role name", "status":"error"}})
-        
-            roleindata = Role.objects.filter(RoleName=data['RoleName'],isActive= True).exclude(id=id).first()
+            
+            roleindata = Role.objects.filter(RoleName=data['RoleName'],isActive= True).first()
             if roleindata is not None:
                 return Response({"data":'',"response": {"n": 0, "msg": "Role already exist","status": "error"}})
             else:
-                serializer = Roleserializer(roleexist,data=data,partial=True)
+                serializer = Roleserializer(data=data)
                 if serializer.is_valid():
                     serializer.save()
-                    RolePermissions.objects.filter(role=serializer.data['id']).delete()
                     for i in result:
                         RolePermissions.objects.create(
                             role = serializer.data['id'],
@@ -374,22 +414,21 @@ class roleupdate(GenericAPIView):
                             delete = i['delete'],
                             menu= i['menu_id']
                         )
-                    return Response({"data":serializer.data,"response": {"n": 1, "msg": "Role updated successfully","status": "success"}})
+                    return Response({"data":serializer.data,"response": {"n": 1, "msg": "Role Added successfully","status": "success"}})
                 else:
                     first_key, first_value = next(iter(serializer.errors.items()))
                     return Response({"data" : serializer.errors,"response":{"n":0,"msg":first_key+' : '+ first_value[0],"status":"error"}})  
-        else:
-            return Response({"data":'',"response": {"n": 0, "msg": "Role not found ","status": "error"}})
 
 class rolebyid(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     def post(self,request):
         id = request.data.get('roleid')
         roleobjects = Role.objects.filter(id=id,isActive=True).first()
         if roleobjects is not None:
             serializer = Roleserializer(roleobjects)
             permission_object = RolePermissions.objects.filter(role= id).order_by("menu")
+            print("permission_object",permission_object.count())
             permission_ser = PermissionsSerializer(permission_object,many=True)
 
             serializer_data = serializer.data
@@ -401,8 +440,8 @@ class rolebyid(GenericAPIView):
             return Response({"data":'',"response": {"n": 0, "msg": "Role data not found  ","status": "success"}})
 
 class roledelete(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     def post(self,request):
         data={}
         id = request.data.get('roleid')
@@ -514,11 +553,7 @@ class userbyid(GenericAPIView):
         if empobjects is not None:
             serializer = UserSerializer(empobjects)
             serializer_data = serializer.data
-            userpermissionobj = UserPermissions.objects.filter(userid=str(userID))
-            userser = UserPermissionSerializer(userpermissionobj,many=True)
-            serializer_data.update({
-                'permissions' : userser.data
-            })
+
             return Response({"data":serializer_data,"response": {"n": 1, "msg": "User shown successfully","status": "success"}})
         else:
             return Response({"data":'',"response": {"n": 0, "msg": "User not found  ","status": "success"}})
@@ -559,17 +594,7 @@ class userupdate(GenericAPIView):
             else:
                 if serializer.is_valid():
                     serializer.save()
-                    userperm = UserPermissions.objects.filter(userid=data['userid']).delete()
-                    for i in result:
-                        UserPermissions.objects.create(
-                            userid = data['userid'],
-                            role =  data['role'],
-                            add = i['create'],
-                            view = i['read'],
-                            edit = i['edit'],
-                            delete = i['delete'],
-                            menu= i['menu_id']
-                        )
+
                     return Response({"data":serializer.data,"response": {"n": 1, "msg": "User updated successfully","status": "success"}})
                 else:
                     first_key, first_value = next(iter(serializer.errors.items()))
@@ -652,10 +677,10 @@ class userdeleteundo(GenericAPIView):
       
 #menu-----------------------------------------------------------------------------------------------
 class Menulist(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
+    # authentication_classes=[userJWTAuthentication]
+    # permission_classes = (permissions.IsAuthenticated,)
     def get(self,request):
-        menuobj=Menu.objects.filter(isActive=True).order_by('sortOrder')
+        menuobj=Menu.objects.filter(isActive=True).order_by('id')
         serializer = MenuSerializer(menuobj,many=True)
         response_={
             'status':'success',
@@ -682,38 +707,6 @@ class GetPermissionData(GenericAPIView):
             response_={
                     'status':'success',
                     'msg':'Permission found Successfully.',
-                    'data':serializer.data
-                }
-            return Response(response_,status=200)
-        else:
-            response_={
-                'status':'error',
-                'msg':'Data not found.',
-                'data':{}
-            }
-            return Response(response_,status=200)
-
-class GetUserPermissionData(GenericAPIView):
-    authentication_classes=[userJWTAuthentication]
-    permission_classes = (permissions.IsAuthenticated,)
-    def post(self,request):
-        data = {}
-        data['userid'] = request.data.get('userid')
-        userobj = UserPermissions.objects.filter(userid=data['userid'], isActive=True).order_by('menu')
-        if userobj is not None:  
-            serializer = UserPermissionSerializer(userobj,many=True)
-            for i in serializer.data:
-                menuobj=Menu.objects.filter(id=i['menu']).first()
-                i['menu_path'] = menuobj.menuPath
-                i['menu_name'] = menuobj.menuItem
-                i['parent_id'] = menuobj.parentId
-                i['sub_parent_id'] = menuobj.subparentId
-                i['isshown'] = menuobj.isshown
-
-
-            response_={
-                    'status':'success',
-                    'msg':'User Permissions found Successfully.',
                     'data':serializer.data
                 }
             return Response(response_,status=200)

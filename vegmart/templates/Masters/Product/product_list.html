@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Products</h5>
+
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <a class="btn btn-primary" href="/masters/add-product">Add</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Pack Size</th>
+          <th>Pack Type</th>
+          <th>MRP</th>
+          <th>B2B Price</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <!-- 🔥 PAGINATION -->
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+</div>
+{% endblock %}
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+let isPaginationInitialized = false;
+
+$(document).ready(function(){
+    loadData(1);
+});
+
+// 🔹 LOAD DATA
+function loadData(page){
+    let search = $("#search").val() || "";
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', search);
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Masters/productvariant_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        beforeSend:function(){
+            swal({icon:"info",text:"Loading...",buttons:false});
+        },
+        success:function(res){
+            swal.close();
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                $.each(res.results,function(i,o){
+                    html += `
+                    <tr>
+                        <td>${o.product_name}</td>
+                        <td>${o.pack_size} ${o.product_unit}</td>
+                        <td>${o.pack_type}</td>
+                        <td>${o.mrp}</td>
+                        <td>${o.b2b_price}</td>
+                        <td>
+                            <a href="/masters/edit-product/${o.product}" class="btn btn-warning btn-sm">Edit</a>
+                            <button onclick="delete_variant(${o.id})" class="btn btn-danger btn-sm">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+                $("#table_body").html(html);
+
+                // 🔥 INIT PAGINATION ONLY ONCE
+                if(!isPaginationInitialized){
+
+                    let totalPages = Math.ceil(res.count / 10);
+
+                    $('#pagination-demo').twbsPagination({
+                        totalPages: totalPages || 1,
+                        visiblePages: 3,
+                        next: 'Next',
+                        prev: 'Prev',
+                        onPageClick: function (event, p) {
+                            if(p !== page){
+                                loadData(p);
+                            }
+                        }
+                    });
+
+                    isPaginationInitialized = true;
+                }
+
+            }else{
+                $("#table_body").html(`
+                    <tr>
+                        <td colspan="6" class="text-center">No Data Found</td>
+                    </tr>
+                `);
+            }
+        }
+    });
+}
+
+</script>
+{% endblock %}

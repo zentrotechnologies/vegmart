@@ -51,10 +51,11 @@ class UserToken(TrackingModel):
     WebToken = models.TextField(null=True, blank=True)
     MobileToken = models.TextField(null=True, blank=True)
 
-class Menu(models.Model):
+class Menu(TrackingModel):
     isActive=models.BooleanField(default=True)
+    menuIcon=models.CharField(max_length=255)
     menuItem=models.CharField(max_length=255)
-    menuPath=models.CharField(max_length=255)
+    menuPath=models.CharField(max_length=255,null=True, blank=True)
     parentId=models.IntegerField(null=True, blank=True)
     subparentId=models.IntegerField(default=0)
     sortOrder=models.IntegerField(null=True, blank=True)
@@ -69,16 +70,9 @@ class RolePermissions(TrackingModel):
     menu= models.IntegerField(default=0)
 
 
-class UserPermissions(TrackingModel):
-    userid = models.CharField(max_length=255)
-    role = models.IntegerField(null=True, blank=True)  
-    add = models.BooleanField(default=False)
-    view = models.BooleanField(default=False)
-    edit = models.BooleanField(default=False)
-    delete = models.BooleanField(default=False)
-    menu= models.IntegerField(default=0)
-
 class EmailOTPVerification(TrackingModel):
     email = models.CharField(max_length=255,null=True, blank=True)
     otp = models.CharField(max_length=255,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)  
+
+

@@ -1,26 +1,6 @@
 from django.db import models
 from helpers.models import TrackingModel
 
-# Create your models here.
-
-class Warehouse(TrackingModel):
-    name = models.CharField(max_length=100)
-    location = models.CharField(max_length=200)
-
-
-class Vendor(TrackingModel):
-    name = models.CharField(max_length=200)
-    phone = models.CharField(max_length=15)
-    address = models.TextField()
-
-class Vehicle(models.Model):
-    number = models.CharField(max_length=50)
-    capacity = models.FloatField()
-    
-class DeliveryAgent(models.Model):
-    name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=15)
-
 class Category(TrackingModel):
     name = models.CharField(max_length=100)
 
@@ -35,8 +15,11 @@ class Product(TrackingModel):
     category = models.CharField(max_length=100)
     sub_category = models.CharField(max_length=100)
     brand = models.CharField(max_length=100)
+    unit = models.CharField(max_length=100)
+
 
 class ProductVariant(TrackingModel):
+    image = models.FileField(upload_to='products/variants/images/', blank=True, null=True,verbose_name='media Image')
     product = models.CharField(max_length=100)
     pack_size = models.CharField(max_length=50)   # 500ml, 1kg
     pack_type = models.CharField(max_length=50)   # pouch, bottle
@@ -47,8 +30,3 @@ class ProductVariant(TrackingModel):
     b2b_price = models.FloatField()
 
 
-class Batch(models.Model):
-    batch_number = models.CharField(max_length=100)
-    product_variant = models.CharField(max_length=100)
-    expiry_date = models.DateField()
-    quantity = models.FloatField()

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Procurement Item Master</h5>
+
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <button class="btn btn-primary" onclick="openItem()">Add</button>
+    </div>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Unit</th>
+        <th>Milk?</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="table_body"></tbody>
+  </table>
+
+  <ul id="pagination-demo"></ul>
+
+</div>
+
+
+<!-- 🔥 MODAL -->
+<div class="modal fade" id="itemModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 id="modal_title">Add Item</h5>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="hidden" id="item_id">
+
+        <input id="item_code" class="form-control mb-2" placeholder="Item Code">
+        <input id="name" class="form-control mb-2" placeholder="Name">
+
+        <select id="category" class="form-control mb-2 select2-init">
+          <option value="milk">Milk</option>
+          <option value="additives">Additives</option>
+          <option value="utilities">Utilities</option>
+        </select>
+
+                <select id="unit" class="form-control mb-3 select2-init">
+                    <option value="">Select Unit</option>
+                    <option value="ml">ml</option>
+                    <option value="gm">gm</option>
+                </select>
+        <label>
+          <input type="checkbox" id="is_milk"> Is Milk
+        </label>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveItem()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block page_js %}
+{{block.super}}
+<script>
+    let currentPage = 1;
+let isInit = false;
+
+$(document).ready(()=>loadData(1));
+
+function loadData(page){
+
+    currentPage = page;
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', $("#search").val());
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Procurement/procurementitemmaster_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            let html = "";
+
+            res.results.forEach(o=>{
+                html += `
+                <tr>
+                    <td>${o.item_code}</td>
+                    <td>${o.name}</td>
+                    <td>${o.category}</td>
+                    <td>${o.unit}</td>
+                    <td>${o.is_milk ? 'Yes' : 'No'}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editItem(${o.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteItem(${o.id})">Delete</button>
+                    </td>
+                </tr>`;
+            });
+
+            $("#table_body").html(html);
+
+            if(!isInit){
+                $('#pagination-demo').twbsPagination({
+                    totalPages: Math.ceil(res.count / 10),
+                    onPageClick:(e,p)=>{
+                        if(currentPage !== p) loadData(p);
+                    }
+                });
+                isInit = true;
+            }
+        }
+    });
+}
+
+function openItem(){
+    $("#item_id").val('');
+    $("#itemModal").modal('show');
+}
+
+function saveItem(){
+
+    let id = $("#item_id").val();
+
+    let url = id ? "procurementitemmasterupdate" : "addprocurementitemmaster";
+
+    let fd = new FormData();
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('item_code',$("#item_code").val());
+    fd.append('name',$("#name").val());
+    fd.append('category',$("#category").val());
+    fd.append('unit',$("#unit").val());
+    fd.append('is_milk',$("#is_milk").is(':checked'));
+
+    if(id) fd.append('itemid', id);
+
+    $.ajax({
+        url: hosturl + "/api/Procurement/" + url,
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+            if(res.response.n==1){
+            swal("Success",res.response.msg,"success");
+                reloadPage();
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+
+function editItem(id){
+    $.post(hosturl+"/api/Procurement/procurementitemmasterbyid",
+    {csrfmiddlewaretoken:'{{csrf_token}}',itemid:id},
+    function(res){
+        let o = res.data;
+        $("#item_id").val(o.id);
+        $("#item_code").val(o.item_code);
+        $("#name").val(o.name);
+        $("#category").val(o.category);
+        $("#unit").val(o.unit);
+        $("#is_milk").prop('checked', o.is_milk);
+
+        $("#itemModal").modal('show');
+    });
+}
+
+function deleteItem(id){
+    $.post(hosturl+"/api/Procurement/procurementitemmasterdelete",
+    {csrfmiddlewaretoken:'{{csrf_token}}',itemid:id},
+    function(){
+        reloadPage();
+    });
+}
+
+function reloadPage(){
+    $('#pagination-demo').twbsPagination('destroy');
+    isInit=false;
+    loadData(currentPage);
+}
+
+$("#search").keyup(()=>{
+    reloadPage();
+});
+</script>
+{% endblock %}

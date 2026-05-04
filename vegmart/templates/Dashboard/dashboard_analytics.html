@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% load i18n %}
+
+{% block title %}Dashboard - Analytics{% endblock title %}
+
+{% block vendor_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'assets/vendor/libs/apex-charts/apex-charts.css' %}" />
+{% endblock vendor_css %}
+
+{% block vendor_js %}
+{{ block.super }}
+<script src="{% static 'assets/vendor/libs/apex-charts/apexcharts.js' %}"></script>
+{% endblock vendor_js %}
+
+
+
+{% block layout %}
+<div class="row g-4">
+
+  <!-- KPI Cards -->
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Total Orders</small>
+      <h4>1,284</h4>
+      <span class="text-success small">+12% from last month</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Today Sales</small>
+      <h4>₹87,420</h4>
+      <span class="text-success small">+8% from yesterday</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Inventory Value</small>
+      <h4>₹12.4L</h4>
+      <span class="text-success small">+3% increase</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Pending Deliveries</small>
+      <h4>23</h4>
+      <span class="text-danger small">+5 more than yesterday</span>
+    </div>
+  </div>
+
+  <!-- Sales Trend -->
+  <div class="col-md-8">
+    <div class="card p-3">
+      <h6>Sales Trend</h6>
+      <div id="salesChart"></div>
+    </div>
+  </div>
+
+  <!-- Category Distribution -->
+  <div class="col-md-4">
+    <div class="card p-3">
+      <h6>Product Category Distribution</h6>
+
+      <div class="mb-2">Dairy Products <span class="float-end">45%</span></div>
+      <div class="progress mb-3">
+        <div class="progress-bar bg-success" style="width:45%"></div>
+      </div>
+
+      <div class="mb-2">Agricultural <span class="float-end">30%</span></div>
+      <div class="progress mb-3">
+        <div class="progress-bar bg-primary" style="width:30%"></div>
+      </div>
+
+      <div class="mb-2">Grocery <span class="float-end">15%</span></div>
+      <div class="progress mb-3">
+        <div class="progress-bar bg-warning" style="width:15%"></div>
+      </div>
+
+      <div class="mb-2">Packaged <span class="float-end">10%</span></div>
+      <div class="progress">
+        <div class="progress-bar bg-info" style="width:10%"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Recent Orders -->
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6>Recent Orders</h6>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ORD-1042</td>
+            <td>Green Valley Farms</td>
+            <td>₹24,500</td>
+            <td><span class="badge bg-success">Delivered</span></td>
+          </tr>
+          <tr>
+            <td>ORD-1041</td>
+            <td>Sunrise Dairy</td>
+            <td>₹18,300</td>
+            <td><span class="badge bg-warning">Processing</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Low Stock -->
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6>Low Stock Products</h6>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Stock</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Full Cream Milk</td>
+            <td>Dairy</td>
+            <td class="text-danger">4 Liters</td>
+          </tr>
+          <tr>
+            <td>Organic Wheat</td>
+            <td>Agriculture</td>
+            <td class="text-danger">12 Kg</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock layout %}
+{% block page_js %}
+{{block.super}}
+<script src="{% static 'assets/js/dashboards-analytics.js' %}"></script>
+
+
+
+<script>
+  $(document).ready(function () {
+    // Initialize both paginations independently
+    initUserPagination();
+    initReviewPagination();
+  });
+
+  function initUserPagination() {
+    loadUserTable(1);
+  }
+
+  function initReviewPagination() {
+    loadReviews(1);
+  }
+
+
+
+  function get_dashboard_data() {
+    $.ajax({
+      url: hosturl + "/api/Dashboard/dashboard_analytics_api",
+      headers: { "Authorization": "Bearer {{token}}" },
+      type: 'GET',
+      // beforeSend: function () {
+      //   swal({
+      //     icon: "info",
+      //     title: "",
+      //     text: "Loading...",
+      //     buttons: false,
+      //   });
+      // },
+      success: function (response) {
+        // swal.close()
+        // console.log('response', response)
+        animateCounter($('#unverified_service_providers_count'), response.unverified_service_providers);
+
+        $('#total_service_providers_count').text(`${response.total_service_providers}`)
+        $('#profit_loss_statement').html(`<span class="h6 mb-0">Total ${response.profit_loss_statement}% Growth</span> 😎 this month`)
+        $('#current_month_total_plans_sales').text(`${response.current_month_total_plans_sales}`)
+        $('#current_month_cunsumer_plans_sales').text(`${response.current_month_cunsumer_plans_sales}`)
+        $('#current_month_service_provider_plans_sales').text(`${response.current_month_service_provider_plans_sales}`)
+
+        // Initialize the chart with the data
+        initweeklyTrendingServicesChart(response.weekly_trending_services_data);
+      }
+    });
+  }
+  // Call the function to fetch and display the dashboard data
+  get_dashboard_data();
+  // Function to initialize the weekly overview chart
+  function animateCounter(element, target, duration = 2000) {
+    const start = 0;
+    const increment = target / (duration / 16); // 16ms is roughly 1 frame at 60fps
+    let current = start;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        clearInterval(timer);
+        current = target;
+      }
+      element.text(Math.floor(current));
+    }, 10);
+  }
+
+  function initweeklyTrendingServicesChart(response) {
+    const chartData = Array.isArray(response)
+      ? response
+      : [0, 0, 0, 0, 0, 0, 0]; // fallback to safe array
+
+    const options = {
+      chart: {
+        type: 'line',
+        height: 300,
+        toolbar: { show: false }
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 3
+      },
+      colors: ['#7367F0'],
+      series: [{
+        name: 'Weekly Overview',
+        data: chartData
+      }],
+      xaxis: {
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: {
+          style: { colors: '#888' }
+        }
+      },
+      yaxis: {
+        labels: {
+          style: { colors: '#888' }
+        }
+      },
+      grid: {
+        borderColor: '#f1f1f1'
+      },
+      tooltip: {
+        theme: 'dark'
+      }
+    };
+
+    const chartElement = document.querySelector("#weeklyTrendingServicesChart");
+    if (chartElement) {
+      const chart = new ApexCharts(chartElement, options);
+      chart.render();
+    }
+  }
+
+
+var options = {
+  chart: { type: 'bar', height: 300 },
+  series: [{
+    name: 'Sales',
+    data: [40000, 35000, 60000, 45000, 70000, 65000, 80000]
+  }],
+  xaxis: {
+    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+  },
+  colors: ['#009389']
+};
+
+new ApexCharts(document.querySelector("#salesChart"), options).render();
+
+  function loadUserTable(page) {
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    $.ajax({
+      url: hosturl + "/api/User/user_list_pagination_api",
+      method: "POST",
+      data: fd,
+      processData: false,
+      contentType: false,
+      headers: { "Authorization": "Bearer {{token}}" },
+      beforeSend: function () {
+        $('#users_table_body').html('<tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr>');
+      },
+      success: function (response) {
+        // console.log('user response', response);
+        let rows = '';
+        if (response.results.length > 0) {
+          let count = (page - 1) * 10 + 1;
+          $.each(response.results, function (i, o) {
+            rows += `
+            <tr>
+              <td>${count++}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar avatar-sm me-3">
+                    <img src="${o.profile_picture || '{% static "assets/img/avatars/1.png" %}'}" class="rounded-circle">
+                  </div>
+                  <div>
+                    <strong>${o.Username || 'N/A'}</strong><br>
+                    <small>@${o.short_name || ''}</small>
+                  </div>
+                </div>
+              </td>
+              <td>${o.email || '-'}</td>
+              <td>${o.mobileNumber || '-'}</td>
+              <td>${o.Role_name || '-'}</td>
+              <td><span class="badge ${o.is_active ? 'bg-success' : 'bg-danger'}">${o.is_active ? 'Active' : 'Inactive'}</span></td>
+            </tr>`;
+          });
+        } else {
+          rows = `<tr><td colspan="6" class="text-center text-muted py-3">No records found</td></tr>`;
+        }
+
+        $('#users_table_body').html(rows);
+        renderPagination('#users-pagination', response.total_pages, page, loadUserTable);
+      },
+      error: function () {
+        $('#users_table_body').html('<tr><td colspan="6" class="text-center text-danger py-3">Failed to load data</td></tr>');
+      }
+    });
+  }
+
+  // ------------------- REVIEWS PAGINATION -------------------
+  function loadReviews(page = 1) {
+
+    var search = $('#search').val();
+    if (search === '') search = ' ';
+    if (search == undefined) search = ' ';
+    var fd = new FormData();
+    fd.append('search', search);
+    fd.append('p', page);
+    fd.append('page_size', 5);
+    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+
+    $.ajax({
+      url: hosturl + "/api/ReviewsAndRating/reviews_and_rating_list_pagination_api?page_size=5?p=" + page,
+      data: fd,
+      headers: { "Authorization": "Bearer {{token}}" },
+      type: 'POST',
+      processData: false,
+      contentType: false,
+      beforeSend: function () {
+        swal({
+          icon: "info",
+          title: "",
+          text: "Loading...",
+          buttons: false,
+        });
+      },
+      success: function (response) {
+        // console.log('response re', response)
+        swal.close();
+        var infohtml = '';
+
+        if (response.count && response.count != 0) {
+          $.each(response.results, function (i, o) {
+            infohtml += `
+                        <li class="d-flex mb-4 align-items-start pb-2 border-bottom">
+                            <div class="flex-shrink-0 me-4">
+                                <img src="${o.user_image ? hosturl + o.user_image : '{% static "assets/img/avatars/1.png" %}'}" 
+                                     class="rounded-circle" alt="user" width="45" height="45">
+                            </div>
+                            <div class="d-flex w-100 align-items-start justify-content-between gap-2">
+                                <div class="me-2">
+                                    <h6 class="mb-1">${o.user_name || ''}</h6>
+                                    <div class="text-warning mb-1">
+                                            ${Array(5).fill(0).map((_, index) => `
+                                                <i class="text-danger ${index < o.rating_count ? 'ri-star-fill' : 'ri-star-line'}"></i>
+                                            `).join("\n")}
+
+                                    </div>
+                                    <p class="mb-0 text-muted small">“${o.description || ''}”</p>
+                                    <small class="text-secondary">${o.created_at ? o.created_at : ''}</small>
+                                </div>
+                                    <i class="ri-delete-bin-6-line me-1 cursor-pointer" onclick="delete_reviewsandrating('${o.id}')"></i>
+                            </div>
+                        </li>
+                    `;
+          });
+
+          $('#reviewsandrating').html(infohtml);
+
+          // Setup pagination
+          var totalPages = Math.ceil(parseInt(response.count) / 5);
+          $('#reviews-pagination').twbsPagination('destroy'); // destroy old instance
+          $('#reviews-pagination').twbsPagination({
+            totalPages: totalPages,
+            visiblePages: 3,
+            startPage: page,
+            next: 'Next',
+            prev: 'Prev',
+            onPageClick: function (event, pg) {
+              if (pg !== page) {
+                loadReviews(pg);
+              }
+            }
+          });
+        } else {
+          $('#reviewsandrating').html('<li class="text-center text-muted">No Data Found</li>');
+          swal({
+            icon: "error",
+            title: "",
+            text: "No Data Found !",
+            button: "Close",
+          });
+        }
+      }
+    });
+  }
+
+  // ------------------- RENDER PAGINATION FUNCTION -------------------
+  function renderPagination(container, totalPages, currentPage, callback) {
+    let html = '';
+    if (totalPages > 1) {
+      html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="javascript:void(0);" onclick="${callback.name}(${currentPage - 1})">&laquo;</a>
+    </li>`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+        <a class="page-link" href="javascript:void(0);" onclick="${callback.name}(${i})">${i}</a>
+      </li>`;
+      }
+      html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="javascript:void(0);" onclick="${callback.name}(${currentPage + 1})">&raquo;</a>
+    </li>`;
+    }
+    $(container).html(html);
+  }
+  function delete_reviewsandrating(id) {
+    swal({
+      title: "Are you sure?",
+      text: "you want to delete it .",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true
+    })
+      .then((willDelete) => {
+        if (willDelete) {
+          $.ajax({
+            url: hosturl + "/api/ReviewsAndRating/reviews_and_ratingdelete",
+            type: 'POST',
+            headers: {
+              'Authorization': 'Bearer {{token}}'
+            },
+            data: {
+              csrfmiddlewaretoken: '{{ csrf_token }}',
+              'reviews_and_rating_id': id
+            },
+            dataType: 'json',
+            beforeSend: function () {
+
+
+
+            },
+            success: function (response) {
+              // Pagination()
+              if (response['response']['n'] == 1) {
+                swal({
+                  icon: "success",
+                  title: "",
+                  text: response['response']['msg'],
+                  button: "Close",
+                }).then(() => {
+                  // Code to execute after the user closes the SweetAlert dialog
+                  initReviewPagination(); // Reload the page
+                });
+
+
+
+              }
+              else {
+                swal({
+                  icon: "error",
+                  title: "",
+                  text: response['response']['msg'],
+                  button: "Close",
+                }).then(() => {
+                  // Code to execute after the user closes the SweetAlert dialog
+                  location.reload(); // Reload the page
+                });
+              }
+
+
+
+
+            }
+          });
+
+        }
+      })
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+{%endblock page_js %}

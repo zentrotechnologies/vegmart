@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<style>
+  #entryModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+</style>
+
+<div class="card">
+
+  <div class="d-flex justify-content-between p-2">
+    <h5>Procurement</h5>
+
+    ```
+    <div class="d-flex gap-2">
+      <input type="text" id="search" class="form-control" placeholder="Search">
+      <button class="btn btn-primary" onclick="openEntry()">+ Add Procurement</button>
+    </div>
+    ```
+
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th>Product</th>
+          <th>Refrence</th>
+          <th>Total</th>
+          <th>Paid</th>
+          <th>Credit</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+
+</div>
+
+<!-- ================= ENTRY MODAL ================= -->
+
+<div class="modal fade" id="entryModal">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+
+      ```
+      <div class="modal-header">
+        <h5>Add Procurement</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row">
+          <div class="col">
+
+            <label>Mode</label>
+            <select id="mode" class="form-control " onchange="switchMode()">
+              <option value="manual">Manual</option>
+              <option value="order">From Order</option>
+            </select>
+          </div>
+
+          <div class="col">
+            <label>Supplier</label>
+            <select id="supplier" class="form-control "></select>
+          </div>
+        </div>
+        <!-- ================= MANUAL ================= -->
+        <div id="manualSection">
+
+          <div class="row">
+
+
+            <div class="col">
+              <label>Product</label>
+              <select id="product" class="form-control "></select>
+            </div>
+
+            <div class="col">
+              <label>Required Qty / Unit</label>
+              <input id="required_qty" class="form-control">
+            </div>
+          </div>
+
+          <button class="btn btn-info mt-2" onclick="generateProcurement()">Generate Items</button>
+
+          <div class="mt-3" style="max-height:300px;overflow:auto;">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Rate</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="procurement_body_manual"></tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- ================= ORDER ================= -->
+        <div id="orderSection" style="display:none;">
+
+          <label>Order ID</label>
+          <input id="order_id" class="form-control">
+
+          <button class="btn btn-info mt-2" onclick="fetchRequirement()">Fetch Requirement</button>
+
+          <div style="max-height:300px;overflow:auto;">
+
+            <h6>Product Requirement</h6>
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Ordered</th>
+                  <th>Stock</th>
+                  <th>Required</th>
+                </tr>
+              </thead>
+              <tbody id="product_table"></tbody>
+            </table>
+
+            <h6>Total Procurement Items</h6>
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Rate</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="procurement_body"></tbody>
+            </table>
+
+          </div>
+
+        </div>
+
+        <label class="mt-2">Grand Total</label>
+        <input id="grand_total" class="form-control" readonly>
+
+        <label class="mt-2">Paid</label>
+        <input id="paid" class="form-control">
+
+        <label class="mt-2">Credit</label>
+        <input id="credit" class="form-control" readonly>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveEntry()">Save</button>
+      </div>
+
+    </div>
+    ```
+
+  </div>
+</div>
+
+<!-- ================= DETAILS MODAL ================= -->
+
+<div class="modal fade" id="detailModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5>Details</h5>
+      </div>
+      <div class="modal-body">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Unit</th>
+              <th>Rate</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="detail_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="completeModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5>Complete Procurement</h5>
+      </div>
+
+      <div class="modal-body">
+        <div class="outputproducts">
+          <div class="heading"><h6>Expected Output:</h6></div>
+          <div id="products_html" class="mb-2"></div>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Product Variant</th>
+              <th>Actual Output Quantity</th>
+            </tr>
+          </thead>
+          <tbody id="variant_body"></tbody>
+        </table>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-success" onclick="confirmComplete()">Confirm</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script>
+
+  // ================= INIT =================
+  $(document).ready(() => {
+    loadData();
+    loadDropdowns();
+  });
+
+  // ================= MODE =================
+  function switchMode() {
+    let m = $("#mode").val();
+    $("#manualSection").toggle(m == "manual");
+    $("#orderSection").toggle(m == "order");
+  }
+
+  // ================= LOAD =================
+  let currentPage = 1;
+
+  function loadData(page = 1) {
+
+    currentPage = page;
+
+    let fd = new FormData();
+    fd.append("p", page);
+    fd.append("search", $("#search").val());
+    fd.append("csrfmiddlewaretoken", "{{csrf_token}}");
+
+    $.ajax({
+      url: hosturl + "/api/Procurement/procurement_list_pagination_api",
+      type: "POST",
+      data: fd,
+      processData: false,
+      contentType: false,
+
+      success: function (res) {
+
+        let html = "";
+
+        res.results.forEach(o => {
+          html += `
+                <tr>
+                    <td>${o.supplier_name}</td>
+                    <td>${o.product_names}</td>
+                    <td>${o.order_id ? 'ORDER-' + o.order_id : 'Manual Procurement'}</td>
+                    <td>${o.total_amount}</td>
+                    <td>${o.paid_amount}</td>
+                    <td>${o.credit_amount}</td>
+                    <td>${statusBadge(o)}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" onclick="viewDetails(${o.id})">View</button>
+                        ${o.status == "completed"?`
+                        `:`
+                        <button class="btn btn-success btn-sm" onclick="completeProcurement(${o.id})">Complete</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProcurement(${o.id})">Delete</button>`}
+                        
+                    </td>
+                </tr>`;
+        });
+
+        $("#table_body").html(html);
+
+        // ================= PAGINATION =================
+        $('#pagination-demo').twbsPagination('destroy');
+
+        let totalPages = Math.ceil(res.count / 10) || 1;
+
+        $('#pagination-demo').twbsPagination({
+          totalPages: totalPages,
+          startPage: page,
+          visiblePages: 5,
+
+          onPageClick: function (event, p) {
+
+            if (p != currentPage) {
+              loadData(p);
+            }
+          }
+        });
+      }
+    });
+  }
+  // ================= GENERATE =================
+  function generateProcurement() {
+
+    let product = $("#product").val();
+    let qty = parseFloat($("#required_qty").val()) || 0;
+
+    if (!product || qty <= 0) {
+      swal("Error", "Enter valid product & qty", "error");
+      return;
+    }
+
+    $.post(hosturl + "/api/Procurement/get_mapping_by_product",
+      { csrfmiddlewaretoken: '{{csrf_token}}', product: product },
+      function (res) {
+        if (res.response.n == 1) {
+
+
+          let html = "";
+
+          res.data.forEach(o => {
+            let req = qty * o.conversion_factor;
+
+            html += `
+            <tr>
+                <td>${o.procurement_item_name}</td>
+                <td><input value="${req}" class="form-control qty" data-item="${o.procurement_item}"></td>
+                <td class="unit" data-unit="${o.procurement_item_unit}">${o.procurement_item_unit}</td>
+                <td><input value="0" class="form-control rate"></td>
+                <td class="item_total">0</td>
+            </tr>`;
+          });
+
+          $("#procurement_body_manual").html(html);
+        } else {
+          swal("Error", res.response.msg, "error");
+          $("#procurement_body_manual").html('');
+        }
+      });
+  }
+
+  // ================= CALC =================
+  $(document).on("keyup", ".qty,.rate,#paid", function () {
+
+    let grand = 0;
+
+    $("#procurement_body_manual tr, #procurement_body tr").each(function () {
+
+      let q = parseFloat($(this).find(".qty").val()) || 0;
+      let r = parseFloat($(this).find(".rate").val()) || 0;
+      
+      let t = q * r;
+      $(this).find(".item_total").text(t.toFixed(2));
+
+      grand += t;
+    });
+
+    $("#grand_total").val(grand);
+
+    let paid = parseFloat($("#paid").val()) || 0;
+    $("#credit").val(grand - paid);
+  });
+
+  // ================= SAVE =================
+  function saveEntry() {
+
+    let items = [];
+
+    $("#procurement_body_manual tr, #procurement_body tr").each(function () {
+
+      let q = parseFloat($(this).find(".qty").val()) || 0;
+      let r = parseFloat($(this).find(".rate").val()) || 0;
+      let item = $(this).find(".qty").data("item");
+      let unit = $(this).find(".unit").data("unit");
+
+      if (q > 0) {
+        items.push({ item_id: item, quantity: q, rate: r, unit: unit });
+      }
+    });
+
+
+
+    if (items.length == 0) {
+      swal("Error", "No items added", "error"); return;
+    }
+    var products = [];
+    if ($('#mode').val() == 'manual') {
+      products.push({
+        product_id: $("#product").val(),
+        quantity: $("#required_qty").val(),
+      })
+    } else {
+      $("#product_table tr").each(function () {
+
+        let pq = parseFloat($(this).find(".requiredqty").data("requiredqty")) || 0;
+        let product_id = $(this).find(".product").data("product");
+        if (pq > 0) {
+          products.push({ product_id: product_id, quantity: pq });
+        }
+      });
+    }
+
+
+    $.ajax({
+      url: hosturl + "/api/Procurement/create_procurement",
+      type: "POST",
+      contentType: "application/json",
+      data: JSON.stringify({
+        supplier_id: $("#supplier").val(),
+        products: products,
+        paid_amount: $("#paid").val(),
+        order_id: $("#order_id").val(),
+        items: items
+      }),
+      success: function (res) {
+
+        if (res.response.n == 1) {
+          swal("Success", res.response.msg, "success");
+          $("#entryModal").modal('hide');
+          loadData();
+        } else {
+          swal("Error", res.response.msg, "error");
+        }
+      }
+    });
+  }
+
+  // ================= STATUS =================
+  function statusBadge(o) {
+    return o.status == "completed"
+      ? '<span class="badge bg-success">Completed</span>'
+      : '<span class="badge bg-warning">Processing</span>';
+  }
+
+  // ================= OPEN =================
+
+  function fetchRequirement() {
+
+    $.post(hosturl + "/api/Procurement/requirement_by_order",
+      {
+        csrfmiddlewaretoken: '{{csrf_token}}',
+        order_id: $("#order_id").val()
+      },
+      function (res) {
+
+        if (res.response.n == 0) {
+          swal("Error", res.response.msg, "error");
+          return;
+        }
+
+        let product_html = "";
+        let procurement_html = "";
+
+        // PRODUCTS TABLE
+        res.data.products.forEach(p => {
+          let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
+          if(p.mapping_exist){
+          product_html += `
+            <tr>
+                <td class="product" data-product="${p.product_id}">${p.product_name} ${p.pack_size} ${p.product_unit}</td>
+                <td>${p.ordered_qty}</td>
+                <td>${p.available_stock}</td>
+                <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
+            </tr>`;
+          }else{
+          product_html += `
+            <tr>
+                <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit}</strike></div><div class="text-danger"><small>Procurement Items Not Mapped</small></div></td>
+                <td><strike>${p.ordered_qty}</strike></td>
+                <td><strike>${p.available_stock}</strike></td>
+                <td><strike>${p.required_qty}</strike></td>
+            </tr>`;
+          }
+
+
+
+        });
+
+        $("#product_table").html(product_html);
+
+        // PROCUREMENT ITEMS
+        res.data.procurement_items.forEach(o => {
+          procurement_html += `
+            <tr>
+                <td>${o.procurement_item_name}</td>
+                <td>
+                    <input type="number" value="${o.required_qty}" 
+                        class="form-control qty" data-item="${o.procurement_item}">
+                </td>
+                <td class="unit" data-unit="${o.unit}">${o.unit}</td>
+                <td><input value="0" class="form-control rate"></td>
+                <td class="item_total">0</td>
+            </tr>`;
+        });
+
+        $("#procurement_body").html(procurement_html);
+      });
+  }
+  function viewDetails(id) {
+
+    $.post(hosturl + "/api/Procurement/procurement_details",
+      {
+        csrfmiddlewaretoken: '{{csrf_token}}',
+        id: id
+      },
+      function (res) {
+
+        if (res.response.n == 0) {
+          swal("Error", res.response.msg, "error");
+          return;
+        }
+
+        let html = "";
+
+        res.data.items.forEach(o => {
+          html += `
+            <tr>
+                <td>${o.procurement_item_name}</td>
+                <td>${o.quantity}</td>
+                <td>${o.unit}</td>
+                <td>${o.rate}</td>
+                <td>${o.total}</td>
+            </tr>`;
+        });
+
+        $("#detail_body").html(html);
+        $("#detailModal").modal("show");
+      });
+  }
+  
+  
+function completeProcurement(id){
+
+    window.currentProcurement = id;
+
+    $.post(hosturl + "/api/Masters/getprocurementexpectedproductvariantlist",{
+            csrfmiddlewaretoken: '{{csrf_token}}',
+            procurement_id: id
+          }, function(res){
+            if(res.response.n == 1){
+
+
+        let html = "";
+
+        res.data.variants.forEach(v=>{
+            html += `
+            <tr>
+                <td>${v.product_name} (${v.pack_size} ${v.product_unit})</td>
+                <td>
+                    <input type="number" 
+                        class="form-control variant_qty"
+                        data-id="${v.id}">
+                </td>
+            </tr>`;
+        });
+        let products_html = "";
+
+        res.data.products.forEach(v=>{
+            products_html += `<div class="text-danger border">${v.product_name} (${v.quantity} ${v.product_unit})</div>`;
+        });
+
+        $("#variant_body").html(html);
+        $("#products_html").html(products_html);
+        $("#completeModal").modal("show");
+                    }else{
+                swal("Error",res.response.msg,"error");
+            }
+    });
+}
+  function confirmComplete(){
+
+    let outputs = [];
+
+    $(".variant_qty").each(function(){
+
+        let qty = parseFloat($(this).val()) || 0;
+        let id = $(this).data("id");
+
+        if(qty > 0){
+            outputs.push({
+                product_variant_id: id,
+                quantity: qty
+            });
+        }
+    });
+
+    if(outputs.length == 0){
+        swal("Error","Enter output quantities","error");
+        return;
+    }
+
+    $.ajax({
+        url: hosturl + "/api/Procurement/complete_procurement",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+            id: currentProcurement,
+            outputs: outputs
+        }),
+        success:function(res){
+
+            if(res.response.n == 1){
+                swal("Success",res.response.msg,"success");
+                $("#completeModal").modal("hide");
+                loadData();
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+        }
+    });
+}
+  
+  function deleteProcurement(id) {
+
+    swal({
+      title: "Delete?",
+      text: "This cannot be undone",
+      icon: "warning",
+      buttons: true
+    }).then((ok) => {
+
+      if (ok) {
+        $.post(hosturl + "/api/Procurement/delete_procurement",
+          {
+            csrfmiddlewaretoken: '{{csrf_token}}',
+            id: id
+          },
+          function (res) {
+
+            if (res.response.n == 1) {
+              swal("Deleted", res.response.msg, "success");
+              loadData();
+            } else {
+              swal("Error", res.response.msg, "error");
+            }
+          });
+      }
+    });
+  }
+  function loadDropdowns() {
+
+    $.get(hosturl + "/api/Partners/vendorlist", function (res) {
+      let html = '<option value="">Select Supplier</option>';
+      res.data.forEach(o => {
+        html += `<option value="${o.id}">${o.name}</option>`;
+      });
+      $("#supplier").html(html);
+    });
+
+    $.get(hosturl + "/api/Masters/procurementreadyproductlist", function (res) {
+      let html = '<option value="">Select Product</option>';
+      res.data.forEach(o => {
+        html += `<option value="${o.id}">${o.name} (${o.unit})</option>`;
+      });
+      $("#product").html(html);
+    });
+  }
+  function openEntry() {
+
+    $("#entryModal").modal('show');
+
+    $("#procurement_body_manual").html("");
+    $("#procurement_body").html("");
+    $("#product_table").html("");
+
+    $("#required_qty").val("");
+    $("#paid").val("");
+    $("#grand_total").val("");
+    $("#credit").val("");
+  }
+</script>
+
+{% endblock %}

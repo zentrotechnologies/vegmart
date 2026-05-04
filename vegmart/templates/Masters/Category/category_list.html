@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+  <div class="d-flex justify-content-between">
+    <h5 class="card-header">Categories</h5>
+    <div>
+      <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+      <a class="btn btn-primary" href="/masters/add-category">Add</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table_body"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="text-center mt-3">
+    <ul id="pagination-demo" class="pagination-sm"></ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script>
+
+let paginationInitialized = false;
+
+$(document).ready(function () {
+    loadData(1);
+});
+
+// 🔹 LOAD DATA
+function loadData(page) {
+
+    let search = $('#search').val() || '';
+
+    let fd = new FormData();
+    fd.append('p', page);
+    fd.append('search', search);
+    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+
+    $.ajax({
+        url: hosturl + "/api/Masters/category_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData: false,
+        contentType: false,
+        beforeSend: function () {
+            swal({ icon: "info", text: "Loading...", buttons: false });
+        },
+        success: function (res) {
+            swal.close();
+
+            let html = "";
+
+            if (res.results.length > 0) {
+
+                $.each(res.results, function (i, o) {
+                    html += `
+                    <tr>
+                        <td>${o.name}</td>
+                        <td>
+                            <a href="/masters/edit-category/${o.id}" class="btn btn-warning btn-sm">Edit</a>
+                            <button onclick="delete_category(${o.id})" class="btn btn-danger btn-sm">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+                $("#table_body").html(html);
+
+                // ✅ INIT PAGINATION ONLY ONCE
+                if (!paginationInitialized) {
+
+                    let totalPages = Math.ceil(res.count / 10);
+
+                    $('#pagination-demo').twbsPagination({
+                        totalPages: totalPages,
+                        visiblePages: 3,
+                        next: 'Next',
+                        prev: 'Prev',
+                        onPageClick: function (event, p) {
+                            if (p !== page) {
+                                loadData(p);
+                            }
+                        }
+                    });
+
+                    paginationInitialized = true;
+                }
+
+            } else {
+                $("#table_body").html(`
+                    <tr>
+                        <td colspan="2" class="text-center">No Data Found</td>
+                    </tr>
+                `);
+            }
+        }
+    });
+}
+
+// 🔹 SEARCH (RESET PAGINATION)
+$('#search').on('keyup', function () {
+    $('#pagination-demo').twbsPagination('destroy');
+    paginationInitialized = false;
+    loadData(1);
+});
+
+// 🔹 DELETE
+function delete_category(id) {
+    swal({
+        title: "Are you sure?",
+        text: "You want to delete it",
+        icon: "warning",
+        buttons: true
+    }).then((ok) => {
+        if (ok) {
+            $.ajax({
+                url: hosturl + "/api/Masters/categorydelete",
+                type: 'POST',
+                data: {
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    categoryid: id
+                },
+                success: function (res) {
+                    if (res.response.n == 1) {
+                        swal("Deleted", res.response.msg, "success");
+
+                        // 🔥 RESET PAGINATION AFTER DELETE
+                        $('#pagination-demo').twbsPagination('destroy');
+                        paginationInitialized = false;
+                        loadData(1);
+
+                    } else {
+                        swal("Error", res.response.msg, "error");
+                    }
+                }
+            });
+        }
+    });
+}
+
+</script>
+{% endblock %}

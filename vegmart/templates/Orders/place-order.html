@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+  <div class="card-header"><h5>Place Order</h5></div>
+  <div class="card-body">
+
+    <!-- CUSTOMER -->
+    <select id="customer" class="form-control mb-3 select2-init">
+      <option value="">Select Customer</option>
+      {% for c in customers %}
+        <option value="{{c.id}}">{{c.name}}</option>
+      {% endfor %}
+    </select>
+
+    <!-- ADD ITEM -->
+    <div class="row">
+      <div class="col">
+        <select id="variant" class="form-control select2-init">
+          <option value="">Select Product</option>
+          {% for v in variants %}
+            <option value="{{v.id}}" data-price="{{v.b2b_price}}">
+              {{v.product_name}} - {{v.pack_size}}{{v.product_unit}}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col">
+        <input id="qty" class="form-control" placeholder="Qty">
+      </div>
+
+      <div class="col">
+        <button class="btn btn-success" onclick="addItem()">Add</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- CART -->
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="cart"></tbody>
+    </table>
+
+    <h5>Total: ₹ <span id="grand_total">0</span></h5>
+
+    <!-- PAYMENT -->
+    <select id="payment_mode" class="form-control mb-2 select2-init">
+      <option value="cash">Cash</option>
+      <option value="credit">Credit</option>
+      <option value="online">Online</option>
+    </select>
+
+    <input id="paid" class="form-control mb-2" placeholder="Paid Amount">
+    <input type="date" id="due_date" class="form-control mb-2">
+
+    <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+
+  </div>
+</div>
+{% endblock %}
+{% block page_js %}
+{{block.super}}
+
+<script>
+
+let cart = [];
+
+// 🔹 ADD ITEM
+function addItem(){
+
+    let sel = $("#variant option:selected");
+
+    let variant_id = sel.val();
+    let name = sel.text();
+    let price = parseFloat(sel.data("price"));
+    let qty = parseInt($("#qty").val());
+
+    if(!variant_id || !qty){
+        swal("Error","Select item & qty","error");
+        return;
+    }
+
+    cart.push({
+        product_variant: variant_id,
+        quantity: qty,
+        price: price,
+        name: name
+    });
+
+    renderCart();
+}
+
+
+// 🔹 RENDER CART
+function renderCart(){
+
+    let html="";
+    let total=0;
+
+    cart.forEach((c,i)=>{
+        let t = c.quantity * c.price;
+        total += t;
+
+        html+=`
+        <tr>
+            <td>${c.name}</td>
+            <td>${c.quantity}</td>
+            <td>${c.price}</td>
+            <td>${t}</td>
+            <td><button onclick="removeItem(${i})" class="btn btn-danger btn-sm">X</button></td>
+        </tr>`;
+    });
+
+    $("#cart").html(html);
+    $("#grand_total").text(total);
+}
+
+
+// 🔹 REMOVE ITEM
+function removeItem(i){
+    cart.splice(i,1);
+    renderCart();
+}
+
+
+// 🔹 SAVE ORDER
+function saveOrder(){
+
+    if(cart.length == 0){
+        swal("Error","Add items","error");
+        return;
+    }
+
+    let fd = new FormData();
+
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('customer_id',$("#customer").val());
+    fd.append('payment_mode',$("#payment_mode").val());
+    fd.append('paid_amount',$("#paid").val());
+
+    fd.append('items', JSON.stringify(cart));
+
+    $.ajax({
+        url: hosturl + "/api/Orders/createorder",
+        type:"POST",
+        data:fd,
+        processData:false,
+        contentType:false,
+        success:function(res){
+
+            if(res.response.n==1){
+                swal("Success","Order created","success")
+                .then(()=>location.href="/orders/orders-list");
+            }else{
+                swal("Error",res.response.msg,"error");
+            }
+
+        }
+    });
+}
+
+</script>
+<script>
+
+$("#variant").change(function(){
+
+    let price = $("#variant option:selected").data("price");
+
+    if(price){
+        $("#price_preview").text("₹ " + price);
+    }
+
+});
+
+</script>
+{% endblock %}

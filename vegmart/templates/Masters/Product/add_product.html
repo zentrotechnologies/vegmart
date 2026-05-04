@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+    <div class="card-header">
+        <h5>Add Product</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col">
+                <input id="name" class="form-control mb-3" placeholder="Name">
+
+            </div>
+            <div class="col">
+                <input id="sku" class="form-control mb-3" placeholder="SKU">
+
+            </div>
+            <div class="col">
+                <input id="hsn_code" class="form-control mb-3" placeholder="HSN Code">
+
+            </div>
+            <div class="col">
+                <select id="category" class="form-control mb-3 select2-init" onchange="get_sub_categories(this.value)">
+                    <option value="">Select Category</option>
+                    {% for c in categories %}
+                    <option value="{{c.id}}">{{c.name}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col">
+
+                <select id="sub_category" class="form-control mb-3 select2-init">
+                    <option value="">Select SubCategory</option>
+                </select>
+            </div>
+            <div class="col">
+
+                <select id="unit" class="form-control mb-3 select2-init">
+                    <option value="">Select Unit</option>
+                    <option value="ml">ml</option>
+                    <option value="gm">gm</option>
+                </select>
+            </div>
+
+            <div class="col">
+                <input id="brand" class="form-control mb-3" placeholder="Brand">
+
+            </div>
+        </div>
+        <!-- PRODUCT -->
+
+
+
+
+
+        <hr>
+
+        <!-- VARIANTS -->
+        <h5>Add Variants</h5>
+
+        <div class="row mb-3">
+            <div class="col"><input id="pack_size" class="form-control" placeholder="Pack Size"></div>
+            <div class="col"><input id="pack_type" class="form-control" placeholder="Pack Type"></div>
+            <div class="col"><input id="fat" class="form-control" placeholder="Fat"></div>
+            <div class="col"><input id="snf" class="form-control" placeholder="SNF"></div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col"><input id="gst_rate" class="form-control" placeholder="GST %"></div>
+            <div class="col"><input id="mrp" class="form-control" placeholder="MRP"></div>
+            <div class="col"><input id="b2b_price" class="form-control" placeholder="B2B Price"></div>
+            <div class="col">
+                <input type="file" id="image" class="form-control">
+            </div>
+            <div class="col">
+                <button class="btn btn-success" onclick="addVariant()">Add</button>
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Pack</th>
+                    <th>Fat/SNF</th>
+                    <th>GST</th>
+                    <th>MRP</th>
+                    <th>B2B</th>
+                    <th>Image</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="variant_table"></tbody>
+        </table>
+
+        <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+<script>
+
+    let variants = [];
+    let editIndex = -1; // 🔥 IMPORTANT
+
+    function addVariant() {
+
+        let pack_size = $("#pack_size").val().trim();
+        let pack_type = $("#pack_type").val().trim();
+        let fat = $("#fat").val();
+        let snf = $("#snf").val();
+        let gst_rate = $("#gst_rate").val();
+        let mrp = $("#mrp").val();
+        let b2b_price = $("#b2b_price").val();
+        let image = $("#image")[0].files[0];
+
+        if (!pack_size || !mrp) {
+            swal("Error", "Pack size & MRP required", "error");
+            return;
+        }
+
+        let image_url = image ? URL.createObjectURL(image) : null;
+
+        let obj = {
+            pack_size,
+            pack_type,
+            fat: fat ? parseFloat(fat) : null,
+            snf: snf ? parseFloat(snf) : null,
+            gst_rate: gst_rate ? parseFloat(gst_rate) : 0,
+            mrp: parseFloat(mrp),
+            b2b_price: b2b_price ? parseFloat(b2b_price) : 0,
+            image: image,
+            image_url: image_url
+        };
+
+        if (editIndex === -1) {
+            variants.push(obj);
+        } else {
+            variants[editIndex] = obj;
+            editIndex = -1;
+            $(".btn-success").text("Add");
+        }
+
+        renderVariants();
+
+        $("#pack_size,#pack_type,#fat,#snf,#gst_rate,#mrp,#b2b_price,#image").val('');
+    }
+
+    function renderVariants() {
+        let html = "";
+
+        if (variants.length === 0) {
+            html = `<tr><td colspan="8" class="text-center">No variants added</td></tr>`;
+        } else {
+            variants.forEach((v, i) => {
+                html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${v.pack_size} (${v.pack_type})</td>
+                <td>${v.fat || '-'} / ${v.snf || '-'}</td>
+                <td>${v.gst_rate}</td>
+                <td>${v.mrp}</td>
+                <td>${v.b2b_price}</td>
+                <td>${v.image_url ? `<img src="${v.image_url}" width="40">` : ''}</td>
+                <td>
+                    <button onclick="editVariant(${i})" class="btn btn-info btn-sm">Edit</button>
+                    <button onclick="removeVariant(${i})" class="btn btn-danger btn-sm">Delete</button>
+                </td>
+            </tr>`;
+            });
+        }
+
+        $("#variant_table").html(html);
+    }
+
+    function editVariant(index) {
+        let v = variants[index];
+
+        $("#pack_size").val(v.pack_size);
+        $("#pack_type").val(v.pack_type);
+        $("#fat").val(v.fat);
+        $("#snf").val(v.snf);
+        $("#gst_rate").val(v.gst_rate);
+        $("#mrp").val(v.mrp);
+        $("#b2b_price").val(v.b2b_price);
+
+        editIndex = index;
+        $(".btn-success").text("Update Variant");
+    }
+
+    function removeVariant(i) {
+        variants.splice(i, 1);
+        renderVariants();
+    }
+
+    function saveProduct() {
+
+        if (!$("#name").val()) {
+            swal("Error", "Product name required", "error");
+            return;
+        }
+
+        if (variants.length === 0) {
+            swal("Error", "Add at least one variant", "error");
+            return;
+        }
+
+        let fd = new FormData();
+
+        fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+        fd.append('name', $("#name").val());
+        fd.append('sku', $("#sku").val());
+        fd.append('hsn_code', $("#hsn_code").val());
+        fd.append('category', $("#category").val());
+        fd.append('sub_category', $("#sub_category").val());
+        fd.append('brand', $("#brand").val());
+        fd.append('unit', $("#unit").val());
+
+        variants.forEach((v, i) => {
+            fd.append(`variants[${i}][pack_size]`, v.pack_size);
+            fd.append(`variants[${i}][pack_type]`, v.pack_type);
+            fd.append(`variants[${i}][fat]`, v.fat);
+            fd.append(`variants[${i}][snf]`, v.snf);
+            fd.append(`variants[${i}][gst_rate]`, v.gst_rate);
+            fd.append(`variants[${i}][mrp]`, v.mrp);
+            fd.append(`variants[${i}][b2b_price]`, v.b2b_price);
+
+            if (v.image) {
+                fd.append(`variants[${i}][image]`, v.image);
+            }
+        });
+
+        $.ajax({
+            url: hosturl + "/masters/add-product",
+            type: "POST",
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.response.n == 1) {
+                    swal("Success", res.response.msg, "success")
+                        .then(() => location.href = "/masters/product-list");
+                } else {
+                    swal("Error", res.response.msg, "error");
+                }
+            }
+        });
+    }
+
+    function get_sub_categories(category) {
+
+        $.post(hosturl + "/api/Masters/subcategorylist",{"category":category} ,function (res) {
+
+            let html = '<option value="">Select SubCategory</option>';
+
+            res.data.forEach(o => {
+
+                html += `<option value="${o.name}">${o.name}</option>`; // ✅ FIXED
+            });
+
+            $("#sub_category").html(html);
+        });
+    }
+
+</script>
+{% endblock %}

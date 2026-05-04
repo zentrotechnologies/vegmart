@@ -31,9 +31,9 @@ EMAIL_HOST = 'mail.zentrotechnologies.com'   # Your domain's SMTP server
 EMAIL_PORT = 465                              # SSL port
 EMAIL_USE_SSL = True                          # Use SSL
 EMAIL_USE_TLS = False                         # Do NOT use both TLS and SSL
-EMAIL_HOST_USER = 'no-reply@mozilourislandguide.com'  # Full email address
-EMAIL_HOST_PASSWORD = 'Mozil@zentro7888'   # Enter mailbox password
-DEFAULT_FROM_EMAIL = 'no-reply@mozilourislandguide.com'
+EMAIL_HOST_USER = 'no-reply@vegmart.com'  # Full email address
+EMAIL_HOST_PASSWORD = 'vegmart@zentro7888'   # Enter mailbox password
+DEFAULT_FROM_EMAIL = 'no-reply@vegmart.com'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -65,12 +65,27 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
-    'User',
+    'Audits',
+    'Customers',
+    'Inventory',
+    'Logistics',
     'Masters',
     'Orders',
-    'Inventory',
+    'Partners',
+    'Procurement',
+    'Production',
+    'User',
 
-    # 'Frontend_User',
+
+
+
+    'Frontend_Inventory',
+    'Frontend_Logistics',
+    'Frontend_Masters',
+    'Frontend_Orders',
+    'Frontend_Procurement',
+    'Frontend_Reports',
+    'Frontend_User',
 
 
 ]

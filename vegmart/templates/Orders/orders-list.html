@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="card">
+
+    <div class="d-flex justify-content-between">
+        <h5 class="card-header">Orders</h5>
+
+        <div class="align-content-center">
+            <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
+            <a class="btn btn-primary mx-2" href="/orders/place-order">Place Order</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Credit</th>
+                    <th>Status</th>
+                    <th>Action</th> <!-- ✅ Added -->
+                </tr>
+            </thead>
+            <tbody id="table_body"></tbody>
+        </table>
+    </div>
+
+    <div class="text-center mt-3">
+        <ul id="pagination-demo" class="pagination-sm"></ul>
+    </div>
+
+</div>
+<div class="modal fade" id="orderModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Order Details</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div id="order_info"></div>
+
+                <table class="table mt-3">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order_items"></tbody>
+                </table>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="requirementModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Procurement Requirement</h5>
+            </div>
+
+            <div class="modal-body">
+                <div class="col mb-2">
+                    <label>Supplier</label>
+                    <select id="supplier" class="form-control"></select>
+                </div>
+                <div style="max-height:300px;overflow:auto;">
+                    <input type="hidden" value="" id="procure_order_id">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Ordered</th>
+                                <th>Stock</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requirement_table"></tbody>
+                    </table>
+                    <h6>Procurement Items</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Unit</th>
+                                <th>Rate</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="procurement_body"></tbody>
+                    </table>
+                </div>
+                <label class="mt-2">Grand Total</label>
+                <input id="grand_total" class="form-control" readonly>
+
+                <label class="mt-2">Paid</label>
+                <input id="paid" class="form-control">
+
+                <label class="mt-2">Credit</label>
+                <input id="credit" class="form-control" readonly>
+
+                <button class="btn btn-primary my-2" onclick="autoProcure()">Auto Procure</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{block.super}}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+
+    let currentPage = 1;
+    let isInit = false;
+
+    $(document).ready(() => {
+        loadData(1);
+        loadDropdowns()
+    });
+
+    // 🔹 LOAD DATA
+    function loadData(page) {
+
+        currentPage = page;
+
+        let fd = new FormData();
+        fd.append('p', page);
+        fd.append('search', $("#search").val() || ''); // ✅ FIX
+        fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+
+        $.ajax({
+            url: hosturl + "/api/Orders/order_list_pagination_api", // ✅ FIX
+            type: "POST",
+            data: fd,
+            processData: false,
+            contentType: false,
+            beforeSend: function () {
+                swal({ icon: "info", text: "Loading...", buttons: false });
+            },
+            success: function (res) {
+                swal.close();
+
+                let html = "";
+
+                if (res.results.length > 0) {
+
+                    res.results.forEach(o => {
+                        html += `
+<tr>
+    <td>#ORDER-${o.id}</td>
+    <td>${o.customer_name || o.customer_id}</td>
+    <td>${o.total_amount}</td>
+    <td>${o.paid_amount}</td>
+    <td>${o.credit_amount}</td>
+    <td>
+        <span class="badge ${getStatusClass(o.status)}">
+            ${o.status}
+        </span>
+    </td>
+    <td>
+        <button class="btn btn-info btn-sm" onclick="viewOrder(${o.id})" title="View Order">👁️</button>
+        <button class="btn btn-secondary btn-sm" onclick="printInvoice(${o.id})" title="Print Invoice">🧾</button>
+
+        ${o.status == 'pending' || o.status == 'placed'  ? `
+            <button class="btn btn-success btn-sm" onclick="confirmOrder(${o.id})" title="Confirm Order">✔</button>
+            <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" title="Cancel Order">✖</button>
+        `: ``}
+
+
+        ${o.status == 'confirmed' ? `
+            <button class="btn btn-primary btn-sm" onclick="dispatchOrder(${o.id})" title="Dispatch Order">🚚</button>
+         `: ``}
+
+
+        ${o.status == 'dispatched' ? `
+            <button class="btn btn-primary btn-sm" onclick="deliverOrder(${o.id})" title="Delivered Order">Deliver</button>
+         `: ``}
+
+
+        ${o.credit_amount > 0 ? `
+            <button class="btn btn-warning btn-sm" onclick="openPayment(${o.id})" title="Make Payment">₹</button>
+         `: ``}
+
+         
+        ${o.status != 'delivered' && o.status != 'cancelled' ? `
+            <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">  Procure</button>
+         `: ``}
+
+
+
+    </td>
+</tr>`;
+                    });
+
+                } else {
+                    html = `
+                <tr>
+                    <td colspan="7" class="text-center">No Data Found</td>
+                </tr>`;
+                }
+
+                $("#table_body").html(html);
+
+                // 🔥 FIXED PAGINATION
+                if (!isInit) {
+
+                    let totalPages = Math.ceil(res.count / 10);
+
+                    $('#pagination-demo').twbsPagination({
+                        startPage: page,
+                        totalPages: totalPages || 1,
+                        visiblePages: 3,
+                        next: 'Next',
+                        prev: 'Prev',
+                        onPageClick: function (e, p) {
+                            if (currentPage !== p) {
+                                loadData(p);
+                            }
+                        }
+                    });
+
+                    isInit = true;
+                }
+
+            }
+        });
+    }
+    function checkRequirement(order_id) {
+
+        $.post(hosturl + "/api/Procurement/requirement_by_order",
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: order_id
+            },
+            function (res) {
+
+                let html = "";
+
+                res.data.products.forEach(p => {
+                    let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
+                    if (p.mapping_exist) {
+                        html += `
+            <tr>
+                <td class="product" data-product="${p.product_id}">${p.product_name} ${p.pack_size} ${p.product_unit}</td>
+                <td>${p.ordered_qty}</td>
+                <td>${p.available_stock}</td>
+                <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
+            </tr>`;
+                    } else {
+                        html += `
+            <tr>
+                <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit}</strike></div><div class="text-danger"><small>Procurement Items Not Mapped</small></div></td>
+                <td><strike>${p.ordered_qty}</strike></td>
+                <td><strike>${p.available_stock}</strike></td>
+                <td><strike>${p.required_qty}</strike></td>
+            </tr>`;
+                    }
+
+
+
+                });
+
+                $("#requirement_table").html(html);
+
+
+                var procurement_html = ''
+                // PROCUREMENT ITEMS
+                res.data.procurement_items.forEach(o => {
+                    procurement_html += `
+            <tr>
+                <td>${o.procurement_item_name}</td>
+                <td>
+                    <input type="number" value="${o.required_qty}" 
+                        class="form-control qty" data-item="${o.procurement_item}">
+                </td>
+                <td class="unit" data-unit="${o.unit}">${o.unit}</td>
+                <td><input value="0" class="form-control rate"></td>
+                <td class="item_total">0</td>
+            </tr>`;
+                });
+                $("#procurement_body").html(procurement_html);
+
+
+
+                $("#requirementModal").modal('show');
+                $("#procure_order_id").val(order_id);
+
+
+            });
+    }
+    // 🔹 SEARCH
+    $("#search").on("keyup", function () {
+        $('#pagination-demo').twbsPagination('destroy');
+        isInit = false;
+        loadData(1);
+    });
+
+    function getStatusClass(status) {
+
+        status = status.toLowerCase();
+
+        if (status === 'pending') return 'bg-warning';
+        if (status === 'confirmed') return 'bg-primary';
+        if (status === 'delivered') return 'bg-success';
+        if (status === 'cancelled') return 'bg-danger';
+
+        return 'bg-secondary';
+    }
+    // =====================================================
+    // 🔹 ORDER ACTIONS
+    // =====================================================
+
+    function confirmOrder(id) {
+        actionOrder(id, "confirmorder", "Order Confirmed");
+    }
+
+    function cancelOrder(id) {
+        actionOrder(id, "cancelorder", "Order Cancelled");
+    }
+
+    function deliverOrder(id) {
+        actionOrder(id, "deliverorder", "Order Delivered");
+    }
+    function dispatchOrder(id) {
+        actionOrder(id, "dispatchorder", "Order Delivered");
+    }
+    function actionOrder(id, api, msg) {
+
+        $.post(hosturl + "/api/Orders/" + api,
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: id
+            },
+            function (res) {
+                if (res.response.n == 1) {
+                    swal("Success", msg, "success");
+                    reloadPage();
+                } else {
+                    swal("Error", res.response.msg, "error");
+                }
+            });
+    }
+
+
+
+    function loadDropdowns() {
+
+        $.get(hosturl + "/api/Partners/vendorlist", function (res) {
+            let html = '<option value="">Select Supplier</option>';
+            res.data.forEach(o => {
+                html += `<option value="${o.id}">${o.name}</option>`;
+            });
+            $("#supplier").html(html);
+        });
+
+    }
+
+    function viewOrder(id) {
+
+        $.post(hosturl + "/api/Orders/orderdetails",
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: id
+            },
+            function (res) {
+
+                let o = res.data.order;
+                let items = res.data.items;
+
+                $("#order_info").html(`
+            <p><b>Order ID:</b> #${o.id}</p>
+            <p><b>Customer:</b> ${o.customer_name}</p>
+            <p><b>Total:</b> ₹${o.total_amount}</p>
+            <p><b>Paid:</b> ₹${o.paid_amount}</p>
+            <p><b>Credit:</b> ₹${o.credit_amount}</p>
+            <p><b>Status:</b> ${o.status}</p>
+        `);
+
+                let html = "";
+
+                items.forEach(i => {
+                    let total = i.quantity * i.price;
+
+                    html += `
+            <tr>
+                <td>${i.product_name} ${i.pack_size}${i.product_unit}</td>
+                <td>${i.quantity}</td>
+                <td>${i.price}</td>
+                <td>${total}</td>
+            </tr>`;
+                });
+
+                $("#order_items").html(html);
+
+                $("#orderModal").modal('show');
+            });
+
+    }
+    function printInvoice(order_id) {
+
+        $.post(hosturl + "/api/Orders/orderdetails",
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: order_id
+            },
+            function (res) {
+
+                let o = res.data.order;
+                let items = res.data.items;
+
+                let subtotal = 0;
+
+                let rows = "";
+
+                items.forEach((i, index) => {
+                    let total = i.quantity * i.price;
+                    subtotal += total;
+
+                    rows += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${i.product_name} ${i.pack_size}${i.product_unit}</td>
+                <td>${i.product_hsn_code}</td>
+                <td>${i.quantity}</td>
+                <td>${i.price}</td>
+                <td>${total}</td>
+            </tr>`;
+                });
+
+                // GST Calculation (example 5%)
+                let gst_rate = 5;
+                let gst_amount = subtotal * gst_rate / 100;
+                let grand_total = subtotal + gst_amount;
+
+                let paid = o.paid_amount || 0;
+                let credit = grand_total - paid;
+
+                let html = `
+        <html>
+        <head>
+            <title>Invoice</title>
+
+            <style>
+                body{
+                    font-family: Arial;
+                    padding:20px;
+                    font-size:12px;
+                }
+
+                .header{
+                    text-align:center;
+                    margin-bottom:10px;
+                }
+
+                .box{
+                    border:1px solid #000;
+                    padding:8px;
+                }
+
+                table{
+                    width:100%;
+                    border-collapse:collapse;
+                }
+
+                table, th, td{
+                    border:1px solid #000;
+                }
+
+                th, td{
+                    padding:6px;
+                    text-align:left;
+                }
+
+                .right{text-align:right;}
+                .center{text-align:center;}
+
+                .no-border td{
+                    border:none;
+                }
+
+                .footer{
+                    margin-top:20px;
+                }
+
+                .stamp{
+                    height:80px;
+                    border:1px dashed #000;
+                    text-align:center;
+                    padding-top:30px;
+                }
+            </style>
+        </head>
+
+        <body>
+
+        <!-- ================= COMPANY ================= -->
+        <div class="header">
+            <h2>VegMart</h2>
+            <div>Address Line 1, City, State - 560001</div>
+            <div>GSTIN: 29ABCDE1234F1Z5</div>
+            <div>Phone: 9876543210 | Email: info@company.com</div>
+        </div>
+
+        <!-- ================= INVOICE META ================= -->
+        <table class="no-border">
+            <tr>
+                <td>
+                    <b>Invoice No:</b> ${o.id}<br>
+                    <b>Date:</b> ${new Date().toLocaleDateString()}
+                </td>
+                <td class="right">
+                    <b>Payment Mode:</b> ${o.payment_mode || '-'}<br>
+                    <b>Status:</b> ${o.status}
+                </td>
+            </tr>
+        </table>
+
+        <!-- ================= BILL / SHIP ================= -->
+        <table>
+            <tr>
+                <th>Bill To</th>
+                <th>Ship To</th>
+            </tr>
+            <tr>
+                <td>
+                    ${o.customer_name || o.customer_id}<br>
+                    ${o.customer_details.address_line1}<br>${o.customer_details.address_line2}<br>${o.customer_details.area},${o.customer_details.city},${o.customer_details.pincode}
+                    GSTIN: ${o.customer_details.gst_number}
+                </td>
+                <td>
+                     ${o.customer_details.address_line1}<br>${o.customer_details.address_line2}<br>${o.customer_details.area},${o.customer_details.city},${o.customer_details.pincode}
+                </td>
+            </tr>
+        </table>
+
+        <!-- ================= ITEMS ================= -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Sr</th>
+                    <th>Product</th>
+                    <th>HSN</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+
+        <!-- ================= TOTALS ================= -->
+        <table>
+            <tr>
+                <td class="right">Subtotal</td>
+                <td class="right">₹ ${subtotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td class="right">GST (${gst_rate}%)</td>
+                <td class="right">₹ ${gst_amount.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td class="right"><b>Grand Total</b></td>
+                <td class="right"><b>₹ ${grand_total.toFixed(2)}</b></td>
+            </tr>
+            <tr>
+                <td class="right">Paid</td>
+                <td class="right">₹ ${paid.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td class="right">Balance</td>
+                <td class="right">₹ ${credit.toFixed(2)}</td>
+            </tr>
+        </table>
+
+        <!-- ================= TERMS ================= -->
+        <div class="footer">
+            <b>Terms & Conditions:</b>
+            <ul>
+                <li>Goods once sold will not be taken back.</li>
+                <li>Payment due within agreed terms.</li>
+                <li>Subject to jurisdiction.</li>
+            </ul>
+        </div>
+
+        <!-- ================= SIGN / STAMP ================= -->
+        <table class="no-border">
+            <tr>
+                <td class="stamp">Customer Signature</td>
+                <td class="stamp">Authorized Signatory</td>
+            </tr>
+        </table>
+
+        </body>
+        </html>
+        `;
+
+                let w = window.open('');
+                w.document.write(html);
+                w.print();
+                w.close();
+            });
+    }
+    // =====================================================
+    // 🔹 PAYMENT
+    // =====================================================
+
+    function openPayment(order_id) {
+
+        let amount = prompt("Enter payment amount:");
+
+        if (!amount) return;
+
+        $.post(hosturl + "/api/Orders/addpayment",
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: order_id,
+                amount: amount,
+                payment_mode: 'cash'
+            },
+            function (res) {
+                if (res.response.n == 1) {
+                    swal("Success", "Payment added", "success");
+                    reloadPage();
+                } else {
+                    swal("Error", res.response.msg, "error");
+                }
+            });
+    }
+
+
+    // 🔹 COMMON RELOAD
+    function reloadPage() {
+        $('#pagination-demo').twbsPagination('destroy');
+        isInit = false;
+        loadData(currentPage);
+    }
+
+    $(document).on("keyup", ".qty,.rate,#paid", function () {
+
+        let grand = 0;
+
+        $("#procurement_body_manual tr, #procurement_body tr").each(function () {
+
+            let q = parseFloat($(this).find(".qty").val()) || 0;
+            let r = parseFloat($(this).find(".rate").val()) || 0;
+
+            let t = q * r;
+            $(this).find(".item_total").text(t.toFixed(2));
+
+            grand += t;
+        });
+
+        $("#grand_total").val(grand);
+
+        let paid = parseFloat($("#paid").val()) || 0;
+        $("#credit").val(grand - paid);
+    });
+    function autoProcure() {
+        let items = [];
+
+        $("#procurement_body tr").each(function () {
+
+            let q = parseFloat($(this).find(".qty").val()) || 0;
+            let r = parseFloat($(this).find(".rate").val()) || 0;
+            let item = $(this).find(".qty").data("item");
+            let unit = $(this).find(".unit").data("unit");
+
+            if (q > 0) {
+                items.push({ item_id: item, quantity: q, rate: r, unit: unit });
+            }
+        });
+
+
+
+        if (items.length == 0) {
+            swal("Error", "No items added", "error"); return;
+        }
+        var products = [];
+
+        $("#requirement_table tr").each(function () {
+
+            let pq = parseFloat($(this).find(".requiredqty").data("requiredqty")) || 0;
+            let product_id = $(this).find(".product").data("product");
+            if (pq > 0) {
+                products.push({ product_id: product_id, quantity: pq });
+            }
+        });
+
+
+
+        $.ajax({
+            url: hosturl + "/api/Procurement/create_procurement",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+                supplier_id: $("#supplier").val(),
+                products: products,
+                paid_amount: $("#paid").val(),
+                order_id: $("#procure_order_id").val(),
+                items: items
+            }),
+            success: function (res) {
+
+                if (res.response.n == 1) {
+                    swal("Success", res.response.msg, "success");
+                    $("#entryModal").modal('hide');
+                } else {
+                    swal("Error", res.response.msg, "error");
+                }
+            }
+        });
+
+
+
+
+    }
+</script>
+
+{% endblock %}
