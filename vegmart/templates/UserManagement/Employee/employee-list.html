@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Employee List{% endblock %}
+
+{% block layout %}
+
+<div class="card">
+
+    <div class="d-flex justify-content-between align-items-center">
+
+        <h5 class="card-header">Employee List</h5>
+
+        <div class="d-flex">
+
+            <input type="text"
+                   id="search"
+                   class="form-control me-2"
+                   placeholder="Search Employee">
+
+            <a href="/add-employee"
+               class="btn btn-primary">
+                Add Employee
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="table-responsive">
+
+        <table class="table table-hover">
+
+            <thead>
+
+                <tr>
+
+                    <th>Employee Code</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="table_body">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="text-center mt-3 mb-3">
+        <ul id="pagination-demo" class="pagination-sm"></ul>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+let paginationInitialized = false;
+
+$(document).ready(function(){
+
+    loadData(1);
+
+});
+
+function loadData(page){
+
+    let search = $("#search").val();
+
+    let fd = new FormData();
+
+    fd.append(
+        'csrfmiddlewaretoken',
+        '{{ csrf_token }}'
+    );
+
+    fd.append('p',page);
+    fd.append('search',search);
+
+    $.ajax({
+
+        url: hosturl +
+             "/api/Employee/employee_list_pagination_api",
+
+        type:'POST',
+
+        data:fd,
+
+        processData:false,
+        contentType:false,
+
+        beforeSend:function(){
+
+            swal({
+                icon:"info",
+                text:"Loading...",
+                buttons:false
+            });
+
+        },
+
+        success:function(res){
+
+            swal.close();
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                $.each(res.results,function(i,o){
+
+                    html += `
+
+                    <tr>
+
+                        <td>${o.employee_code || '-'}</td>
+
+                        <td>${o.full_name || '-'}</td>
+
+                        <td>${o.email || '-'}</td>
+
+                        <td>${o.mobile_number || '-'}</td>
+
+                        <td>${o.department || '-'}</td>
+
+                        <td>${o.designation || '-'}</td>
+
+                        <td>${o.role_name || '-'}</td>
+
+                        <td>
+
+                            <span class="badge bg-success">
+                                ${o.status}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <a href="/edit-employee/${o.id}"
+                               class="btn btn-warning btn-sm">
+
+                                Edit
+
+                            </a>
+
+                            <button
+                                onclick="delete_employee(${o.id})"
+                                class="btn btn-danger btn-sm">
+
+                                Delete
+
+                            </button>
+
+                        </td>
+
+                    </tr>
+
+                    `;
+                });
+
+                $("#table_body").html(html);
+
+                if(!paginationInitialized){
+
+                    let totalPages =
+                    Math.ceil(res.count / 10);
+
+                    $('#pagination-demo').twbsPagination({
+
+                        totalPages: totalPages > 0 ? totalPages : 1,
+
+                        visiblePages: 5,
+
+                        next: 'Next',
+
+                        prev: 'Prev',
+
+                        onPageClick: function(event,p){
+
+                            if(page != p){
+
+                                loadData(p);
+
+                            }
+
+                        }
+
+                    });
+
+                    paginationInitialized = true;
+                }
+
+            }else{
+
+                $("#table_body").html(`
+
+                    <tr>
+
+                        <td colspan="9"
+                            class="text-center">
+
+                            No Employee Found
+
+                        </td>
+
+                    </tr>
+
+                `);
+
+            }
+
+        }
+
+    });
+
+}
+
+$('#search').keyup(function(){
+
+    $('#pagination-demo').twbsPagination('destroy');
+
+    paginationInitialized = false;
+
+    loadData(1);
+
+});
+
+function delete_employee(id){
+
+    swal({
+
+        title:"Are you sure?",
+
+        text:"You want to delete this employee?",
+
+        icon:"warning",
+
+        buttons:true,
+
+        dangerMode:true
+
+    }).then((ok)=>{
+
+        if(ok){
+
+            $.ajax({
+
+                url: hosturl +
+                     "/api/Employee/employeedelete",
+
+                type:'POST',
+
+                data:{
+                    csrfmiddlewaretoken:'{{ csrf_token }}',
+                    employeeid:id
+                },
+
+                success:function(res){
+
+                    if(res.response.n == 1){
+
+                        swal(
+                            "Deleted",
+                            res.response.msg,
+                            "success"
+                        );
+
+                        $('#pagination-demo')
+                        .twbsPagination('destroy');
+
+                        paginationInitialized = false;
+
+                        loadData(1);
+
+                    }else{
+
+                        swal(
+                            "Error",
+                            res.response.msg,
+                            "error"
+                        );
+
+                    }
+
+                }
+
+            });
+
+        }
+
+    });
+
+}
+
+</script>
+
+{% endblock %}

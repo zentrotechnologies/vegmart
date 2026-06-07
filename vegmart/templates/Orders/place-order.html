@@ -2,16 +2,26 @@
 
 {% block layout %}
 <div class="card">
-  <div class="card-header"><h5>Place Order</h5></div>
+  <div class="card-header">
+    <h5>Place Order</h5>
+  </div>
   <div class="card-body">
+    <div class="row">
+      <div class="col-10">
+        <select id="customer" class="form-control mb-3 select2-init">
+          <option value="">Select Customer</option>
+          {% for c in customers %}
+          <option value="{{c.id}}">{{c.name}}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-2">
+        <button class="btn btn-primary" onclick="openModal()">New Customer</button>
 
+      </div>
+    </div>
     <!-- CUSTOMER -->
-    <select id="customer" class="form-control mb-3 select2-init">
-      <option value="">Select Customer</option>
-      {% for c in customers %}
-        <option value="{{c.id}}">{{c.name}}</option>
-      {% endfor %}
-    </select>
+
 
     <!-- ADD ITEM -->
     <div class="row">
@@ -19,9 +29,9 @@
         <select id="variant" class="form-control select2-init">
           <option value="">Select Product</option>
           {% for v in variants %}
-            <option value="{{v.id}}" data-price="{{v.b2b_price}}">
-              {{v.product_name}} - {{v.pack_size}}{{v.product_unit}}
-            </option>
+          <option value="{{v.id}}" data-price="{{v.b2b_price}}" data-image_url="{{v.image}}">
+            {{v.product_name}} - {{v.pack_size}}{{v.product_unit}}
+          </option>
           {% endfor %}
         </select>
       </div>
@@ -67,120 +77,375 @@
 
   </div>
 </div>
+
+<!-- 🔥 MODAL -->
+<div class="modal fade" id="customerModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 id="modalTitle">Add Customer</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="hidden" id="customer_id">
+
+        <div class="row">
+          <div class="col-md-6"><input id="name" class="form-control mb-2" placeholder="Name"></div>
+          <div class="col-md-6"><input id="mobile" class="form-control mb-2" placeholder="Mobile"></div>
+
+          <div class="col-md-6"><input id="address1" class="form-control mb-2" placeholder="Address 1"></div>
+          <div class="col-md-6"><input id="address2" class="form-control mb-2" placeholder="Address 2"></div>
+
+          <div class="col-md-4"><input id="area" class="form-control mb-2" placeholder="Area"></div>
+          <div class="col-md-4"><input id="city" class="form-control mb-2" placeholder="City"></div>
+          <div class="col-md-4"><input id="pincode" class="form-control mb-2" placeholder="Pincode"></div>
+
+          <div class="col-md-6"><input id="gst" class="form-control mb-2" placeholder="GST"></div>
+
+          <div class="col-md-6">
+            <select id="type" class="form-control mb-2 select2-init">
+              <option value="b2c">B2C</option>
+              <option value="b2b">B2B</option>
+            </select>
+          </div>
+
+          <div class="col-md-6"><input id="credit_days" class="form-control mb-2" placeholder="Credit Days"></div>
+          <div class="col-md-6"><input id="balance" class="form-control mb-2" placeholder="Opening Balance"></div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block page_js %}
 {{block.super}}
 
 <script>
 
-let cart = [];
+  let cart = [];
 
-// 🔹 ADD ITEM
-function addItem(){
+  // 🔹 ADD ITEM
+  function addItem() {
 
     let sel = $("#variant option:selected");
 
     let variant_id = sel.val();
     let name = sel.text();
     let price = parseFloat(sel.data("price"));
+    let image_url = hosturl+(sel.data("image_url"));
     let qty = parseInt($("#qty").val());
 
-    if(!variant_id || !qty){
-        swal("Error","Select item & qty","error");
-        return;
+    if (!variant_id || !qty) {
+      swal("Error", "Select item & qty", "error");
+      return;
     }
 
     cart.push({
-        product_variant: variant_id,
-        quantity: qty,
-        price: price,
-        name: name
+      product_variant: variant_id,
+      quantity: qty,
+      price: price,
+      image_url:image_url,
+      name: name
     });
 
     renderCart();
-}
+  }
 
 
-// 🔹 RENDER CART
-function renderCart(){
+  // 🔹 RENDER CART
+function renderCart() {
 
-    let html="";
-    let total=0;
+    let html = "";
+    let total = 0;
 
-    cart.forEach((c,i)=>{
+    cart.forEach((c, i) => {
+
         let t = c.quantity * c.price;
         total += t;
 
-        html+=`
+        html += `
         <tr>
-            <td>${c.name}</td>
-            <td>${c.quantity}</td>
-            <td>${c.price}</td>
-            <td>${t}</td>
-            <td><button onclick="removeItem(${i})" class="btn btn-danger btn-sm">X</button></td>
+
+            <td>
+              ${c.image_url ? `<img src="${c.image_url}" width="70" height="70">` : ''}
+              ${c.name}</td>
+
+            <td width="120">
+                <input 
+                    type="number"
+                    min="1"
+                    value="${c.quantity}"
+                    class="form-control"
+                    onchange="updateQty(${i}, this.value)"
+                >
+            </td>
+
+            <td width="150">
+                <input 
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value="${c.price}"
+                    class="form-control"
+                    onchange="updatePrice(${i}, this.value)"
+                >
+            </td>
+
+            <td>₹ ${t.toFixed(2)}</td>
+
+            <td>
+                <button onclick="removeItem(${i})" class="btn btn-danger btn-sm">
+                    X
+                </button>
+            </td>
+
         </tr>`;
     });
 
     $("#cart").html(html);
-    $("#grand_total").text(total);
+    $("#grand_total").text(total.toFixed(2));
 }
+// 🔹 UPDATE QUANTITY
+function updateQty(index, qty) {
 
+    qty = parseFloat(qty);
 
-// 🔹 REMOVE ITEM
-function removeItem(i){
-    cart.splice(i,1);
+    if (qty <= 0 || isNaN(qty)) {
+        qty = 1;
+    }
+
+    cart[index].quantity = qty;
+
     renderCart();
 }
 
 
-// 🔹 SAVE ORDER
-function saveOrder(){
+// 🔹 UPDATE PRICE
+function updatePrice(index, price) {
 
-    if(cart.length == 0){
-        swal("Error","Add items","error");
-        return;
+    price = parseFloat(price);
+
+    if (price < 0 || isNaN(price)) {
+        price = 0;
+    }
+
+    cart[index].price = price;
+
+    renderCart();
+}
+  // 🔹 REMOVE ITEM
+  function removeItem(i) {
+    cart.splice(i, 1);
+    renderCart();
+  }
+
+
+  // 🔹 SAVE ORDER
+  function saveOrder() {
+
+    if (cart.length == 0) {
+      swal("Error", "Add items", "error");
+      return;
     }
 
     let fd = new FormData();
 
-    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
-    fd.append('customer_id',$("#customer").val());
-    fd.append('payment_mode',$("#payment_mode").val());
-    fd.append('paid_amount',$("#paid").val());
+    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+    fd.append('customer_id', $("#customer").val());
+    fd.append('payment_mode', $("#payment_mode").val());
+    fd.append('paid_amount', $("#paid").val());
 
     fd.append('items', JSON.stringify(cart));
 
     $.ajax({
-        url: hosturl + "/api/Orders/createorder",
-        type:"POST",
-        data:fd,
-        processData:false,
-        contentType:false,
-        success:function(res){
+      url: hosturl + "/api/Orders/createorder",
+      type: "POST",
+      data: fd,
+      processData: false,
+      contentType: false,
+      success: function (res) {
 
-            if(res.response.n==1){
-                swal("Success","Order created","success")
-                .then(()=>location.href="/orders/orders-list");
-            }else{
-                swal("Error",res.response.msg,"error");
-            }
-
+        if (res.response.n == 1) {
+          swal("Success", "Order created", "success")
+            .then(() => location.href = "/orders/orders-list");
+        } else {
+          swal("Error", res.response.msg, "error");
         }
+
+      }
     });
-}
+  }
 
 </script>
 <script>
 
-$("#variant").change(function(){
+  $("#variant").change(function () {
 
     let price = $("#variant option:selected").data("price");
 
-    if(price){
-        $("#price_preview").text("₹ " + price);
+    if (price) {
+      $("#price_preview").text("₹ " + price);
     }
 
-});
+  });
+  function openModal() {
+    $("#modalTitle").text("Add Customer");
+    $("#customer_id").val('');
+    $("input").val('');
+    $("#customerModal").modal('show');
+  }
+  function saveCustomer() {
+
+    // Get values
+    let id = $("#customer_id").val();
+
+    let name = $("#name").val().trim();
+    let mobile = $("#mobile").val().trim();
+    let address1 = $("#address1").val().trim();
+    let address2 = $("#address2").val().trim();
+    let area = $("#area").val().trim();
+    let city = $("#city").val().trim();
+    let pincode = $("#pincode").val().trim();
+    let gst = $("#gst").val().trim();
+    let type = $("#type").val();
+    let credit_days = $("#credit_days").val().trim();
+    let balance = $("#balance").val().trim();
+
+    // ================= VALIDATION =================
+
+    // Name
+    if (name === "") {
+      swal("Validation Error", "Please enter customer name", "warning");
+      $("#name").focus();
+      return;
+    }
+
+    // Mobile
+    if (mobile === "") {
+      swal("Validation Error", "Please enter mobile number", "warning");
+      $("#mobile").focus();
+      return;
+    }
+
+    if (!/^[0-9]{10}$/.test(mobile)) {
+      swal("Validation Error", "Mobile number must be 10 digits", "warning");
+      $("#mobile").focus();
+      return;
+    }
+
+    // Address
+    if (address1 === "") {
+      swal("Validation Error", "Please enter address", "warning");
+      $("#address1").focus();
+      return;
+    }
+
+    // Area
+    if (area === "") {
+      swal("Validation Error", "Please enter area", "warning");
+      $("#area").focus();
+      return;
+    }
+
+    // City
+    if (city === "") {
+      swal("Validation Error", "Please enter city", "warning");
+      $("#city").focus();
+      return;
+    }
+
+    // Pincode
+    if (pincode !== "" && !/^[0-9]{6}$/.test(pincode)) {
+      swal("Validation Error", "Pincode must be 6 digits", "warning");
+      $("#pincode").focus();
+      return;
+    }
+
+    // GST Validation (Optional)
+    if (gst !== "" && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gst)) {
+      swal("Validation Error", "Please enter valid GST number", "warning");
+      $("#gst").focus();
+      return;
+    }
+
+    // Credit Days
+    if (credit_days !== "" && isNaN(credit_days)) {
+      swal("Validation Error", "Credit days must be numeric", "warning");
+      $("#credit_days").focus();
+      return;
+    }
+
+    // Opening Balance
+    if (balance !== "" && isNaN(balance)) {
+      swal("Validation Error", "Opening balance must be numeric", "warning");
+      $("#balance").focus();
+      return;
+    }
+
+    // ================= API =================
+
+    let url = id
+      ? "/api/Customers/customerupdate"
+      : "/api/Customers/addcustomer";
+
+    let fd = new FormData();
+
+    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+
+    if (id) {
+      fd.append('customerid', id);
+    }
+
+    fd.append('name', name);
+    fd.append('mobile', mobile);
+    fd.append('address_line1', address1);
+    fd.append('address_line2', address2);
+    fd.append('area', area);
+    fd.append('city', city);
+    fd.append('pincode', pincode);
+    fd.append('gst_number', gst);
+    fd.append('customer_type', type);
+    fd.append('default_credit_days', credit_days);
+    fd.append('outstanding_balance', balance);
+
+    $.ajax({
+      url: hosturl + url,
+      type: "POST",
+      data: fd,
+      processData: false,
+      contentType: false,
+
+      success: function (res) {
+
+        if (res.response.n == 1) {
+
+          swal("Success", res.response.msg, "success");
+
+          $("#customerModal").modal('hide');
+
+          window.location.href = window.location.href;
+        } else {
+
+          swal("Error", res.response.msg, "error");
+
+        }
+      },
+
+      error: function () {
+        swal("Error", "Something went wrong", "error");
+      }
+    });
+  }
+
 
 </script>
 {% endblock %}

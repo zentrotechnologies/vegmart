@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Add Employee{% endblock %}
+
+{% block layout %}
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Add Employee</h5>
+            </div>
+
+            <div class="card-body">
+
+                <form>
+
+                    {% csrf_token %}
+
+                    <div class="row">
+
+                        <div class="col-md-4 mb-3">
+                            <label>Employee Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="employee_code">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="first_name">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Last Name</label>
+                            <input type="text" class="form-control" id="last_name">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Mobile Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="mobile_number" maxlength="10">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Alternate Mobile</label>
+                            <input type="text" class="form-control" id="alternate_mobile" maxlength="10">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Designation <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="designation">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Department</label>
+                            <select class="form-control select2" id="department">
+                                <option value="">Select Department</option>
+                                <option value="Sales">Sales</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Accounts">Accounts</option>
+                                <option value="HR">HR</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Role</label>
+                            <select class="form-control select2" id="role">
+                                <option value="">Select Role</option>
+                                {% for r in roles%}
+                                <option value="{{r.id}}">{{r.RoleName}}</option>
+                                {%endfor%}
+      
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Joining Date</label>
+                            <input type="text" class="form-control datepicker" id="joining_date">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Relieving Date</label>
+                            <input type="text" class="form-control datepicker" id="relieving_date">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Reporting Manager</label>
+                            <select class="form-control select2" id="reporting_manager">
+                                <option value="">Select Reporting Manager</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Gender</label>
+                            <select class="form-control select2" id="gender">
+                                <option value="">Select Gender</option>
+                                <option value="MALE">Male</option>
+                                <option value="FEMALE">Female</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Date Of Birth</label>
+                            <input type="text" class="form-control datepicker" id="date_of_birth">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Status</label>
+                            <select class="form-control select2" id="status">
+                                <option value="ACTIVE">Active</option>
+                                <option value="INACTIVE">Inactive</option>
+                                <option value="RESIGNED">Resigned</option>
+                                <option value="TERMINATED">Terminated</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label>Address</label>
+                            <textarea class="form-control" rows="3" id="address"></textarea>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>City</label>
+                            <input type="text" class="form-control" id="city">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>State</label>
+                            <input type="text" class="form-control" id="state">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Pincode</label>
+                            <input type="text" class="form-control" id="pincode" maxlength="6">
+                        </div>
+
+                    </div>
+
+                    <button type="button"
+                            onclick="validation()"
+                            class="btn btn-primary">
+                        Submit
+                    </button>
+
+                    <a href="/employee-list"
+                       class="btn btn-danger">
+                        Cancel
+                    </a>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+$(document).ready(function(){
+
+    $('.select2').select2({
+        width:'100%'
+    });
+
+    loadReportingManagers();
+
+});
+
+function loadReportingManagers(){
+
+    $.ajax({
+        url: hosturl + "/api/Employee/employeelist",
+        type:'GET',
+        success:function(res){
+
+            let html = '<option value="">Select Reporting Manager</option>';
+
+            $.each(res.data,function(i,o){
+
+                html += `
+                    <option value="${o.id}">
+                        ${o.full_name}
+                    </option>
+                `;
+            });
+
+            $("#reporting_manager").html(html);
+
+        }
+    });
+}
+
+function validateEmail(email){
+
+    let regex =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return regex.test(email);
+}
+
+function validation(){
+
+    let employee_code =
+    $("#employee_code").val().trim();
+
+    let first_name =
+    $("#first_name").val().trim();
+
+    let email =
+    $("#email").val().trim();
+
+    let mobile =
+    $("#mobile_number").val().trim();
+
+    let designation =
+    $("#designation").val().trim();
+
+    let pincode =
+    $("#pincode").val().trim();
+
+    if(employee_code == ""){
+        swal("Error","Enter employee code","error");
+        return false;
+    }
+
+    if(first_name == ""){
+        swal("Error","Enter first name","error");
+        return false;
+    }
+
+    if(email == ""){
+        swal("Error","Enter email","error");
+        return false;
+    }
+
+    if(!validateEmail(email)){
+        swal("Error","Enter valid email","error");
+        return false;
+    }
+
+    if(mobile == ""){
+        swal("Error","Enter mobile number","error");
+        return false;
+    }
+
+    if(!/^\d+$/.test(mobile)){
+        swal("Error","Mobile should be numeric","error");
+        return false;
+    }
+
+    if(mobile.length != 10){
+        swal("Error","Mobile must be 10 digits","error");
+        return false;
+    }
+
+    if(designation == ""){
+        swal("Error","Enter designation","error");
+        return false;
+    }
+
+    if(pincode != ""){
+
+        if(!/^\d+$/.test(pincode)){
+            swal("Error","Invalid pincode","error");
+            return false;
+        }
+
+        if(pincode.length != 6){
+            swal("Error","Pincode must be 6 digits","error");
+            return false;
+        }
+    }
+
+    saveEmployee();
+}
+
+function saveEmployee(){
+
+    let fd = new FormData();
+
+    fd.append(
+        'csrfmiddlewaretoken',
+        '{{csrf_token}}'
+    );
+
+    fd.append(
+        'employee_code',
+        $("#employee_code").val()
+    );
+
+    fd.append(
+        'first_name',
+        $("#first_name").val()
+    );
+
+    fd.append(
+        'last_name',
+        $("#last_name").val()
+    );
+
+    fd.append(
+        'full_name',
+        $("#first_name").val() + ' ' +
+        $("#last_name").val()
+    );
+
+    fd.append('email',$("#email").val());
+    fd.append('mobile_number',$("#mobile_number").val());
+    fd.append('alternate_mobile',$("#alternate_mobile").val());
+
+    fd.append('designation',$("#designation").val());
+    fd.append('department',$("#department").val());
+    fd.append('role',$("#role").val());
+
+    fd.append('joining_date',$("#joining_date").val());
+    fd.append('relieving_date',$("#relieving_date").val());
+
+    fd.append(
+        'reporting_manager',
+        $("#reporting_manager").val()
+    );
+
+    fd.append('gender',$("#gender").val());
+    fd.append('date_of_birth',$("#date_of_birth").val());
+
+    fd.append('address',$("#address").val());
+    fd.append('city',$("#city").val());
+    fd.append('state',$("#state").val());
+    fd.append('pincode',$("#pincode").val());
+
+    fd.append('status',$("#status").val());
+
+    $.ajax({
+
+        url: hosturl + "/add-employee",
+        type:'POST',
+        data:fd,
+        processData:false,
+        contentType:false,
+
+        beforeSend:function(){
+
+            swal({
+                icon:"info",
+                text:"Saving...",
+                buttons:false
+            });
+        },
+
+        success:function(res){
+
+            if(res.response.n == 1){
+
+                swal(
+                    "Success",
+                    res.response.msg,
+                    "success"
+                ).then(function(){
+
+                    window.location.href =
+                    hosturl +
+                    "/employee-list";
+
+                });
+
+            }else{
+
+                swal(
+                    "Error",
+                    res.response.msg,
+                    "error"
+                );
+            }
+        }
+    });
+}
+
+</script>
+
+{% endblock %}

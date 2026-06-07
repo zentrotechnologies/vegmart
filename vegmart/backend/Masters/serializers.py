@@ -83,3 +83,5 @@ class CustomProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model= ProductVariant
         fields='__all__'
+        
+

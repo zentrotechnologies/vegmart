@@ -67,6 +67,7 @@ INSTALLED_APPS = [
 
     'Audits',
     'Customers',
+    'Employee',
     'Inventory',
     'Logistics',
     'Masters',

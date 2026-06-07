@@ -104,9 +104,16 @@ def dashboard(request):
             # messages.error(request, forgot_password_response['response']['msg'])
             return HttpResponse(json.dumps(forgot_password_response),content_type='application/json')
     else:
-        return render(request, 'Dashboard/dashboard_analytics.html')
-    
-
+        if request.session.get('role_id') == 1:
+            return render(request, 'Dashboard/admin_dashboard_analytics.html')
+        elif request.session.get('role_id') == 3:
+            return render(request, 'Dashboard/procurement_dashboard_analytics.html')
+        elif request.session.get('role_id') == 4:
+            return render(request, 'Dashboard/sales_dashboard_analytics.html')
+            
+        else:
+            return render(request, 'Dashboard/admin_dashboard_analytics.html')
+            
 
 def customer_list(request):
     token = request.session.get('token', False)
@@ -133,6 +140,85 @@ def role_list(request):
     else:
         messages.error(request, 'Session expired. Please log in again.')
         return redirect('Frontend_User:login')
+
+
+
+
+
+
+
+def employee_list(request):
+    token = request.session.get('token', False)
+    if token:
+        return render(request, 'UserManagement/Employee/employee-list.html')
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+
+def add_employee(request):
+    token = request.session.get('token', False)
+    if token:
+        headers = {'Authorization': f'Bearer {token}'}
+
+        if request.method == 'POST':
+            data = request.POST.copy()
+            add_employee_url=hosturl+"/api/Employee/addemployee"
+            response = requests.post(add_employee_url, data=data, headers=headers)
+            return HttpResponse(json.dumps(response.json()), content_type='application/json')
+
+        else:
+            get_role_list_url=hosturl+"/api/User/rolelist"
+            response = requests.get(get_role_list_url, headers=headers)
+            return render(request, 'UserManagement/Employee/add-employee.html',{'roles':response.json()['data']})
+
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+
+def edit_employee(request, id):
+    token = request.session.get('token', False)
+
+    if token:
+        headers = {'Authorization': f'Bearer {token}'}
+
+        if request.method == 'POST':
+            data = request.POST.copy()
+            edit_employee_url=hosturl+"/api/Employee/employeeupdate"
+
+            response = requests.post(edit_employee_url, data=data, headers=headers)
+            return HttpResponse(json.dumps(response.json()), content_type='application/json')
+
+        else:
+            data = {'employeeid': id}
+            get_employee_url=hosturl+"/api/Employee/employeebyid"
+            response = requests.post(get_employee_url, data=data, headers=headers)
+            print("response",response.json())
+            get_role_list_url=hosturl+"/api/User/rolelist"
+            roles_response = requests.get(get_role_list_url, headers=headers)
+            return render(
+                request,
+                'UserManagement/Employee/edit-employee.html',
+                {'employee': response.json()['data'],'roles': roles_response.json()['data']}
+            )
+
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

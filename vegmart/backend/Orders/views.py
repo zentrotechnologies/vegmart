@@ -60,18 +60,19 @@ class createorder(GenericAPIView):
 
             variant_id = item.get('product_variant')
             qty = int(item.get('quantity'))
+            price = int(item.get('price'))
 
             # 🔥 CUSTOMER PRICING
-            cp = CustomerPricing.objects.filter(
-                customer_id=customer_id,
-                product_variant_id=variant_id
-            ).first()
+            # cp = CustomerPricing.objects.filter(
+            #     customer_id=customer_id,
+            #     product_variant_id=variant_id
+            # ).first()
+            variant = ProductVariant.objects.filter(id=variant_id).first()
 
-            if cp:
-                price = cp.custom_price
-            else:
-                variant = ProductVariant.objects.filter(id=variant_id).first()
-                price = variant.b2b_price if variant else 0
+            # if cp:
+            #     price = cp.custom_price
+            # else:
+            #     price = variant.b2b_price if variant else 0
 
             total = price * qty
             total_amount += total

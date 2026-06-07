@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Edit Employee{% endblock %}
+
+{% block layout %}
+
+<div class="row">
+    <div class="col-xl-12">
+
+        <div class="card">
+
+            <div class="card-header">
+                <h5>Edit Employee</h5>
+            </div>
+
+            <div class="card-body">
+
+                <form>
+
+                    {% csrf_token %}
+
+                    <div class="row">
+
+                        <div class="col-md-4 mb-3">
+                            <label>Employee Code <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="employee_code"
+                                   value="{{employee.employee_code}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>First Name <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="first_name"
+                                   value="{{employee.first_name}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Last Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="last_name"
+                                   value="{{employee.last_name}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Email <span class="text-danger">*</span></label>
+                            <input type="email"
+                                   class="form-control"
+                                   id="email"
+                                   value="{{employee.email}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Mobile Number <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="mobile_number"
+                                   maxlength="10"
+                                   value="{{employee.mobile_number}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Alternate Mobile</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="alternate_mobile"
+                                   maxlength="10"
+                                   value="{{employee.alternate_mobile}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Designation <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="designation"
+                                   value="{{employee.designation}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Department</label>
+
+                            <select class="form-control select2" id="department">
+
+                                <option value="">Select Department</option>
+
+                                <option value="Sales"
+                                    {% if employee.department == 'Sales' %}selected{% endif %}>
+                                    Sales
+                                </option>
+
+                                <option value="Marketing"
+                                    {% if employee.department == 'Marketing' %}selected{% endif %}>
+                                    Marketing
+                                </option>
+
+                                <option value="Accounts"
+                                    {% if employee.department == 'Accounts' %}selected{% endif %}>
+                                    Accounts
+                                </option>
+
+                                <option value="HR"
+                                    {% if employee.department == 'HR' %}selected{% endif %}>
+                                    HR
+                                </option>
+
+                                <option value="Admin"
+                                    {% if employee.department == 'Admin' %}selected{% endif %}>
+                                    Admin
+                                </option>
+
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Role</label>
+
+                            <select class="form-control select2" id="role">
+
+                                <option value="">Select Role</option>
+                                {% for r in roles %}
+                                {% if employee.role|stringformat:"s" == r.id|stringformat:"s" %}
+                                <option value="{{r.id}}" selected>{{r.RoleName}}</option>
+                                {%else%}
+                                <option value="{{r.id}}">{{r.RoleName}}</option>
+                                {% endif %}
+                                
+                                {%endfor%}
+
+                                
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Joining Date</label>
+                            <input type="text"
+                                   class="form-control datepicker"
+                                   id="joining_date"
+                                   value="{{employee.joining_date|default:''}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Relieving Date</label>
+                            <input type="text"
+                                   class="form-control datepicker"
+                                   id="relieving_date"
+                                   value="{{employee.relieving_date|default:''}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Reporting Manager</label>
+                            <select class="form-control select2"
+                                    id="reporting_manager">
+                                <option value="">Select Reporting Manager</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Gender</label>
+
+                            <select class="form-control select2" id="gender">
+
+                                <option value="">Select Gender</option>
+
+                                <option value="MALE"
+                                    {% if employee.gender == 'MALE' %}selected{% endif %}>
+                                    Male
+                                </option>
+
+                                <option value="FEMALE"
+                                    {% if employee.gender == 'FEMALE' %}selected{% endif %}>
+                                    Female
+                                </option>
+
+                                <option value="OTHER"
+                                    {% if employee.gender == 'OTHER' %}selected{% endif %}>
+                                    Other
+                                </option>
+
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Date Of Birth</label>
+                            <input type="text"
+                                   class="form-control datepicker"
+                                   id="date_of_birth"
+                                   value="{{employee.date_of_birth|default:''}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Status</label>
+
+                            <select class="form-control select2" id="status">
+
+                                <option value="ACTIVE"
+                                    {% if employee.status == 'ACTIVE' %}selected{% endif %}>
+                                    Active
+                                </option>
+
+                                <option value="INACTIVE"
+                                    {% if employee.status == 'INACTIVE' %}selected{% endif %}>
+                                    Inactive
+                                </option>
+
+                                <option value="RESIGNED"
+                                    {% if employee.status == 'RESIGNED' %}selected{% endif %}>
+                                    Resigned
+                                </option>
+
+                                <option value="TERMINATED"
+                                    {% if employee.status == 'TERMINATED' %}selected{% endif %}>
+                                    Terminated
+                                </option>
+
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label>Address</label>
+                            <textarea class="form-control"
+                                      rows="3"
+                                      id="address">{{employee.address}}</textarea>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>City</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="city"
+                                   value="{{employee.city}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>State</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="state"
+                                   value="{{employee.state}}">
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label>Pincode</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="pincode"
+                                   maxlength="6"
+                                   value="{{employee.pincode}}">
+                        </div>
+
+                    </div>
+
+                    <button type="button"
+                            class="btn btn-primary"
+                            onclick="updateEmployee()">
+                        Update
+                    </button>
+
+                    <a href="/employee-list"
+                       class="btn btn-danger">
+                        Cancel
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+$(document).ready(function(){
+
+    $('.select2').select2({
+        width:'100%'
+    });
+
+    loadReportingManagers();
+
+});
+
+function loadReportingManagers(){
+
+    $.ajax({
+
+        url: hosturl + "/api/Employee/employeelist",
+        type:'GET',
+
+        success:function(res){
+
+            let html =
+            '<option value="">Select Reporting Manager</option>';
+
+            $.each(res.data,function(i,o){
+
+                let selected = '';
+
+                if(o.id == '{{employee.reporting_manager}}'){
+                    selected = 'selected';
+                }
+
+                html += `
+                    <option value="${o.id}" ${selected}>
+                        ${o.full_name}
+                    </option>
+                `;
+            });
+
+            $("#reporting_manager").html(html).trigger('change');
+        }
+
+    });
+
+}
+
+function validateEmail(email){
+
+    let regex =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return regex.test(email);
+
+}
+
+function updateEmployee(){
+
+    let employee_code =
+    $("#employee_code").val().trim();
+
+    let first_name =
+    $("#first_name").val().trim();
+
+    let email =
+    $("#email").val().trim();
+
+    let mobile =
+    $("#mobile_number").val().trim();
+
+    let designation =
+    $("#designation").val().trim();
+
+    if(employee_code == ''){
+        swal("Error","Enter employee code","error");
+        return false;
+    }
+
+    if(first_name == ''){
+        swal("Error","Enter first name","error");
+        return false;
+    }
+
+    if(email == ''){
+        swal("Error","Enter email","error");
+        return false;
+    }
+
+    if(!validateEmail(email)){
+        swal("Error","Enter valid email","error");
+        return false;
+    }
+
+    if(mobile.length != 10){
+        swal("Error","Enter valid mobile number","error");
+        return false;
+    }
+
+    if(designation == ''){
+        swal("Error","Enter designation","error");
+        return false;
+    }
+
+    let fd = new FormData();
+
+    fd.append('csrfmiddlewaretoken','{{csrf_token}}');
+    fd.append('employeeid','{{employee.id}}');
+
+    fd.append('employee_code',$("#employee_code").val());
+    fd.append('first_name',$("#first_name").val());
+    fd.append('last_name',$("#last_name").val());
+
+    fd.append(
+        'full_name',
+        $("#first_name").val() + ' ' +
+        $("#last_name").val()
+    );
+
+    fd.append('email',$("#email").val());
+    fd.append('mobile_number',$("#mobile_number").val());
+    fd.append('alternate_mobile',$("#alternate_mobile").val());
+
+    fd.append('designation',$("#designation").val());
+    fd.append('department',$("#department").val());
+    fd.append('role',$("#role").val());
+
+    fd.append('joining_date',$("#joining_date").val());
+    fd.append('relieving_date',$("#relieving_date").val());
+
+    fd.append(
+        'reporting_manager',
+        $("#reporting_manager").val()
+    );
+
+    fd.append('gender',$("#gender").val());
+    fd.append('date_of_birth',$("#date_of_birth").val());
+
+    fd.append('address',$("#address").val());
+    fd.append('city',$("#city").val());
+    fd.append('state',$("#state").val());
+    fd.append('pincode',$("#pincode").val());
+
+    fd.append('status',$("#status").val());
+
+    $.ajax({
+
+        url: hosturl +
+             "/edit-employee/{{employee.id}}",
+
+        type:'POST',
+
+        data:fd,
+
+        processData:false,
+        contentType:false,
+
+        beforeSend:function(){
+
+            swal({
+                icon:"info",
+                text:"Updating...",
+                buttons:false
+            });
+
+        },
+
+        success:function(res){
+
+            if(res.response.n == 1){
+
+                swal(
+                    "Success",
+                    res.response.msg,
+                    "success"
+                ).then(function(){
+
+                    window.location.href =
+                    hosturl +
+                    "/employee-list";
+
+                });
+
+            }else{
+
+                swal(
+                    "Error",
+                    res.response.msg,
+                    "error"
+                );
+
+            }
+
+        }
+
+    });
+
+}
+
+</script>
+
+{% endblock %}

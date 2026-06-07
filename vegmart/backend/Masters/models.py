@@ -17,7 +17,6 @@ class Product(TrackingModel):
     brand = models.CharField(max_length=100)
     unit = models.CharField(max_length=100)
 
-
 class ProductVariant(TrackingModel):
     image = models.FileField(upload_to='products/variants/images/', blank=True, null=True,verbose_name='media Image')
     product = models.CharField(max_length=100)

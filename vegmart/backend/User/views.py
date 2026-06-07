@@ -120,7 +120,8 @@ class login(GenericAPIView):
                 })
 
                 # ================= GET MENU + PERMISSIONS =================
-                role_perms_menuids =list(RolePermissions.objects.filter(role=role,isActive=True).values_list('menu',flat=True))
+                rp_obj=RolePermissions.objects.filter(role=role,isActive=True)
+                role_perms_menuids =list(rp_obj.filter(Q(add=True)|Q(view=True)|Q(edit=True)|Q(delete=True)).values_list('menu',flat=True))
 
                 print("role_perms_menuids",role_perms_menuids)
                 # permission_ser = PermissionsSerializer(permission_object,many=True)

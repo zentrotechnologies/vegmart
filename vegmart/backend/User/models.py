@@ -69,7 +69,6 @@ class RolePermissions(TrackingModel):
     delete = models.BooleanField(default=False)
     menu= models.IntegerField(default=0)
 
-
 class EmailOTPVerification(TrackingModel):
     email = models.CharField(max_length=255,null=True, blank=True)
     otp = models.CharField(max_length=255,null=True, blank=True)

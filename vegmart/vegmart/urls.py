@@ -26,6 +26,7 @@ urlpatterns = [
     # backend
     path('api/Audits/', include('Audits.urls')),
     path('api/Customers/', include('Customers.urls')),
+    path('api/Employee/', include('Employee.urls')),
     path('api/Inventory/', include('Inventory.urls')),
     path('api/Logistics/', include('Logistics.urls')),
     path('api/Masters/', include('Masters.urls')),

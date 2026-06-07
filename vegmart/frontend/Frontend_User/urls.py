@@ -16,5 +16,7 @@ urlpatterns = [
 
     path('role-list', v.role_list, name='role_list'),
 
-
+    path('employee-list', v.employee_list, name='employee_list'),
+    path('add-employee', v.add_employee, name='add_employee'),
+    path('edit-employee/<str:id>', v.edit_employee, name='edit_employee'),
 ]

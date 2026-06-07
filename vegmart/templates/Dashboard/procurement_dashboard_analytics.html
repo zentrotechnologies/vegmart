@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Procurement Dashboard{% endblock %}
+
+{% block vendor_css %}
+{{ block.super }}
+
+<link rel="stylesheet" href="{% static 'assets/vendor/libs/apex-charts/apex-charts.css' %}" />
+{% endblock %}
+
+{% block vendor_js %}
+{{ block.super }}
+
+<script src="{% static 'assets/vendor/libs/apex-charts/apexcharts.js' %}"></script>
+
+{% endblock %}
+
+{% block layout %}
+
+<div class="row g-4">
+
+  <!-- KPI -->
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Total Procurement</small>
+      <h4 id="total_procurement">0</h4>
+      <span class="text-success small">Total entries</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Today's Purchase</small>
+      <h4 id="today_purchase">₹0</h4>
+      <span class="text-success small">Today's procurement</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Pending Procurement</small>
+      <h4 id="pending_procurement">0</h4>
+      <span class="text-warning small">Awaiting completion</span>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3">
+      <small>Vendors</small>
+      <h4 id="vendors">0</h4>
+      <span class="text-info small">Active vendors</span>
+    </div>
+  </div>
+
+  <!-- PROCUREMENT CHART -->
+
+  <div class="col-md-8">
+    <div class="card p-3">
+      <h6>Monthly Procurement</h6>
+      <div id="procurementChart"></div>
+    </div>
+  </div>
+
+  <!-- LOW STOCK -->
+
+  <div class="col-md-4">
+    <div class="card p-3">
+      <h6>Low Stock Raw Materials</h6>
+
+```
+  <div id="low_stock"></div>
+
+</div>
+```
+
+  </div>
+
+  <!-- RECENT PROCUREMENT -->
+
+  <div class="col-md-12">
+    <div class="card p-3">
+
+```
+  <h6>Recent Procurement</h6>
+
+  <table class="table table-sm">
+
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody id="recent_procurement"></tbody>
+
+  </table>
+
+</div>
+```
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+$(document).ready(function(){
+    loadProcurementDashboard();
+});
+
+
+function loadProcurementDashboard(){
+
+    $.ajax({
+        url: hosturl + "/api/Dashboard/procurement_dashboard_api",
+        type:"GET",
+        headers:{
+            "Authorization":"Bearer {{token}}"
+        },
+
+        success:function(res){
+
+            $("#total_procurement").text(res.total_procurement);
+            $("#today_purchase").text("₹"+res.today_purchase);
+            $("#pending_procurement").text(res.pending_procurement);
+            $("#vendors").text(res.vendors);
+
+            // LOW STOCK
+            let low_html = "";
+
+            res.low_stock.forEach(i=>{
+
+                low_html += `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>${i.name}</span>
+                        <span class="text-danger">${i.stock}</span>
+                    </div>
+
+                    <div class="progress">
+                        <div class="progress-bar bg-danger" style="width:${i.percent}%"></div>
+                    </div>
+                </div>`;
+            });
+
+            $("#low_stock").html(low_html);
+
+            // RECENT PROCUREMENT
+            let html = "";
+
+            res.recent_procurement.forEach(o=>{
+
+                html += `
+                <tr>
+                    <td>${o.id}</td>
+                    <td>${o.vendor}</td>
+                    <td>₹${o.amount}</td>
+                    <td>
+                        <span class="badge bg-warning">${o.status}</span>
+                    </td>
+                </tr>`;
+            });
+
+            $("#recent_procurement").html(html);
+
+            renderProcurementChart(res.monthly_procurement);
+        }
+    });
+}
+
+
+function renderProcurementChart(data){
+
+    var options = {
+        chart:{
+            type:'line',
+            height:300
+        },
+
+        series:[{
+            name:'Procurement',
+            data:data
+        }],
+
+        xaxis:{
+            categories:['Jan','Feb','Mar','Apr','May','Jun','Jul']
+        },
+
+        colors:['#ff9800']
+    };
+
+    new ApexCharts(document.querySelector("#procurementChart"), options).render();
+}
+
+</script>
+
+{% endblock %}
