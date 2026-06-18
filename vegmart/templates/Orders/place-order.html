@@ -1,83 +1,148 @@
 {% extends "base.html" %}
 
 {% block layout %}
-<div class="card">
-  <div class="card-header">
-    <h5>Place Order</h5>
+<style>
+  .product-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    transition: .2s;
+    height: 100%;
+  }
+
+  .product-card span {
+    display: block;
+    font-weight: 600;
+    min-height: 40px;
+  }
+
+  .product-card small {
+    display: block;
+    color: #6b7280;
+  }
+
+  .product-card {
+    cursor: pointer;
+  }
+
+  .product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+  }
+
+  .product-card.selected {
+    border: 2px solid #16a34a;
+    background: #f0fdf4;
+  }
+
+  .product-card img {
+    width: 100%;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .qty-box {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qty-input {
+    max-width: 80px;
+    text-align: center;
+    padding: 6px;
+  }
+
+  .order-summary {
+    position: sticky;
+    top: 20px;
+  }
+
+  .cart-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding: 6px 0;
+  }
+</style>
+
+<div class="container-fluid">
+  <div class="row card mb-3">
+    <div class="card-body pb-0">
+      <div class="row">
+        <h5>Place Order</h5>
+
+        <div class="col-md-3">
+          <input type="text" id="searchProduct" class="form-control" placeholder="Search Product">
+        </div>
+        <div class="col-md-3">
+          <select id="categoryFilter" class="form-control">
+            <option value="">All Categories</option>
+            {% for c in categories %}
+            <option value="{{c.name}}">{{c.name}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select id="customer" class="form-control select2-init">
+            <option value="">Select Customer</option>
+            {% for c in customers %}
+            <option value="{{c.id}}">{{c.name}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100" onclick="openModal()">+ New Customer</button>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-10">
-        <select id="customer" class="form-control mb-3 select2-init">
-          <option value="">Select Customer</option>
-          {% for c in customers %}
-          <option value="{{c.id}}">{{c.name}}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-2">
-        <button class="btn btn-primary" onclick="openModal()">New Customer</button>
+
+  <div class="row">
+    <div class="col-lg-8 card">
+
+
+
+      <div class="row" id="productGrid">
 
       </div>
-    </div>
-    <!-- CUSTOMER -->
-
-
-    <!-- ADD ITEM -->
-    <div class="row">
-      <div class="col">
-        <select id="variant" class="form-control select2-init">
-          <option value="">Select Product</option>
-          {% for v in variants %}
-          <option value="{{v.id}}" data-price="{{v.b2b_price}}" data-image_url="{{v.image}}">
-            {{v.product_name}} - {{v.pack_size}}{{v.product_unit}}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="col">
-        <input id="qty" class="form-control" placeholder="Qty">
-      </div>
-
-      <div class="col">
-        <button class="btn btn-success" onclick="addItem()">Add</button>
+      <div class="d-flex justify-content-center mt-3 mb-3">
+        <nav>
+          <ul class="pagination" id="pagination"></ul>
+        </nav>
       </div>
     </div>
 
-    <hr>
+    <div class="col-lg-4">
+      <div class="card order-summary">
+        <div class="card-header">
+          <h5>Order Summary</h5>
+        </div>
+        <div class="card-body">
+          <div id="cartItems"></div>
 
-    <!-- CART -->
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Product</th>
-          <th>Qty</th>
-          <th>Price</th>
-          <th>Total</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="cart"></tbody>
-    </table>
+          <hr>
 
-    <h5>Total: ₹ <span id="grand_total">0</span></h5>
+          <h4>Total ₹ <span id="grand_total">0.00</span></h4>
 
-    <!-- PAYMENT -->
-    <select id="payment_mode" class="form-control mb-2 select2-init">
-      <option value="cash">Cash</option>
-      <option value="credit">Credit</option>
-      <option value="online">Online</option>
-    </select>
+          <select id="payment_mode" class="form-control mb-2">
+            <option value="cash">Cash</option>
+            <option value="online">Online</option>
+            <option value="credit">Credit</option>
+          </select>
 
-    <input id="paid" class="form-control mb-2" placeholder="Paid Amount">
-    <input type="date" id="due_date" class="form-control mb-2">
+          <input id="paid" class="form-control mb-2" placeholder="Paid Amount">
 
-    <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
-
+          <button class="btn btn-success w-100" onclick="saveOrder()">
+            Save Order
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-
 <!-- 🔥 MODAL -->
 <div class="modal fade" id="customerModal">
   <div class="modal-dialog modal-lg">
@@ -128,132 +193,271 @@
 {% endblock %}
 {% block page_js %}
 {{block.super}}
-
 <script>
-
   let cart = [];
+  $(document).ready(function () {
+    loadProducts();
+  });
+  let categoryFilter = "";
 
-  // 🔹 ADD ITEM
-  function addItem() {
+  $("#categoryFilter").change(function () {
 
-    let sel = $("#variant option:selected");
+    categoryFilter = $(this).val();
 
-    let variant_id = sel.val();
-    let name = sel.text();
-    let price = parseFloat(sel.data("price"));
-    let image_url = hosturl+(sel.data("image_url"));
-    let qty = parseInt($("#qty").val());
+    loadProducts(1);
 
-    if (!variant_id || !qty) {
-      swal("Error", "Select item & qty", "error");
-      return;
+  });
+  let variants = {};
+  function changeQty(id, change) {
+    let input = $("#qty" + id);
+    let qty = parseInt(input.val() || 0);
+    qty = Math.max(0, qty + change);
+    input.val(qty);
+    updateCartFromInput(id);
+  }
+
+  function updateCartFromInput(id) {
+    let qty = parseInt($("#qty" + id).val() || 0);
+
+    cart = cart.filter(x => x.product_variant != id);
+
+    if (qty > 0) {
+      cart.push({
+        product_variant: id,
+        quantity: qty,
+        price: variants[id].price,
+        name: variants[id].name,
+        image_url: variants[id].image
+      });
+      $("#card" + id).addClass("selected");
+    } else {
+      $("#card" + id).removeClass("selected");
     }
-
-    cart.push({
-      product_variant: variant_id,
-      quantity: qty,
-      price: price,
-      image_url:image_url,
-      name: name
-    });
 
     renderCart();
   }
 
-
-  // 🔹 RENDER CART
-function renderCart() {
-
-    let html = "";
+  function renderCart() {
+    let html = '';
     let total = 0;
 
-    cart.forEach((c, i) => {
+    cart.forEach(item => {
+      let rowTotal = item.quantity * item.price;
+      total += rowTotal;
 
-        let t = c.quantity * c.price;
-        total += t;
-
-        html += `
-        <tr>
-
-            <td>
-              ${c.image_url ? `<img src="${c.image_url}" width="70" height="70">` : ''}
-              ${c.name}</td>
-
-            <td width="120">
-                <input 
-                    type="number"
-                    min="1"
-                    value="${c.quantity}"
-                    class="form-control"
-                    onchange="updateQty(${i}, this.value)"
-                >
-            </td>
-
-            <td width="150">
-                <input 
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value="${c.price}"
-                    class="form-control"
-                    onchange="updatePrice(${i}, this.value)"
-                >
-            </td>
-
-            <td>₹ ${t.toFixed(2)}</td>
-
-            <td>
-                <button onclick="removeItem(${i})" class="btn btn-danger btn-sm">
-                    X
-                </button>
-            </td>
-
-        </tr>`;
+      html += `
+<div class="cart-row">
+<div>
+<b>${item.name}</b><br>
+${item.quantity} × ₹${item.price}
+</div>
+<div>₹${rowTotal.toFixed(2)}</div>
+</div>`;
     });
 
-    $("#cart").html(html);
+    if (cart.length === 0) {
+      html = "<p>No products selected</p>";
+    }
+
+    $("#cartItems").html(html);
     $("#grand_total").text(total.toFixed(2));
-}
-// 🔹 UPDATE QUANTITY
-function updateQty(index, qty) {
+  }
 
-    qty = parseFloat(qty);
+  $("#searchProduct").on(
+    "keyup",
+    debounce(function () {
 
-    if (qty <= 0 || isNaN(qty)) {
-        qty = 1;
+      searchText = $(this).val();
+
+      loadProducts(1);
+
+    }, 500)
+  );
+  function debounce(func, delay) {
+
+    let timer;
+
+    return function () {
+
+      clearTimeout(timer);
+
+      timer = setTimeout(
+        () => func.apply(this, arguments),
+        delay
+      );
+
+    };
+
+  }
+  // ==================== PAGINATION ====================
+
+  let currentPage = 1;
+  let searchText = "";
+  function loadProducts(page = 1) {
+    let pageSize = 12;
+    currentPage = page;
+    $("#productGrid").html(`
+      <div class="col-12 text-center">
+          Loading...
+      </div>
+      `);
+    $.ajax({
+      url: hosturl + "/api/Masters/productvariant_list_pagination_api",
+      type: "POST",
+
+      data: {
+        csrfmiddlewaretoken: "{{csrf_token}}",
+        p: page,
+        search: searchText,
+        category: categoryFilter,
+        page_size: pageSize
+      },
+
+      success: function (res) {
+
+        renderProducts(res.results);
+
+        let totalPages = Math.ceil(
+          res.count / pageSize
+        );
+
+        buildPagination(
+          totalPages,
+          page
+        );
+
+      },
+
+      error: function (err) {
+        console.log(err);
+      }
+    });
+
+  }
+  function buildPagination(totalPages, current) {
+
+    let html = "";
+
+    html += `
+    <li class="page-item ${current == 1 ? 'disabled' : ''}">
+        <a class="page-link"
+           href="javascript:void(0)"
+           onclick="loadProducts(${current - 1})">
+           Previous
+        </a>
+    </li>
+    `;
+
+    for (let i = 1; i <= totalPages; i++) {
+
+      html += `
+        <li class="page-item ${i == current ? 'active' : ''}">
+            <a class="page-link"
+               href="javascript:void(0)"
+               onclick="loadProducts(${i})">
+                ${i}
+            </a>
+        </li>
+        `;
     }
 
-    cart[index].quantity = qty;
+    html += `
+    <li class="page-item ${current == totalPages ? 'disabled' : ''}">
+        <a class="page-link"
+           href="javascript:void(0)"
+           onclick="loadProducts(${current + 1})">
+           Next
+        </a>
+    </li>
+    `;
 
-    renderCart();
-}
+    $("#pagination").html(html);
+  }
+  function renderProducts(products) {
+
+    let html = "";
+
+    products.forEach(v => {
+      variants[v.id] = {
+        price: v.b2b_price,
+        name: v.product_name,
+        image: v.image
+      };
+      html += `
+        <div class="col-md-3 mb-3">
+
+            <div class="product-card"
+                 id="card${v.id}">
+
+                <img
+                    src="${hosturl}${v.image}"
+                    onerror="this.src='/static/no-image.png'">
+
+                <span>${v.product_name}</span>
+
+                <small>
+                    ${v.pack_size}
+                    ${v.product_unit}
+                </small>
+
+                <div>
+                    ₹${v.b2b_price}
+                </div>
+
+                <div class="qty-box mt-2">
+
+                    <button
+                        class="btn btn-danger btn-sm"
+                        onclick="changeQty('${v.id}',-1)">
+                        -
+                    </button>
+
+                    <input
+                        type="number"
+                        min="0"
+                        value="${cart.find(x => x.product_variant == v.id)?.quantity || 0
+        }"
+                        id="qty${v.id}"
+                        class="form-control qty-input"
+                        onchange="updateCartFromInput('${v.id}')">
+
+                    <button
+                        class="btn btn-success btn-sm"
+                        onclick="changeQty('${v.id}',1)">
+                        +
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+        `;
 
 
-// 🔹 UPDATE PRICE
-function updatePrice(index, price) {
+    });
 
-    price = parseFloat(price);
+    $("#productGrid").html(html);
 
-    if (price < 0 || isNaN(price)) {
-        price = 0;
-    }
-
-    cart[index].price = price;
-
-    renderCart();
-}
-  // 🔹 REMOVE ITEM
-  function removeItem(i) {
-    cart.splice(i, 1);
-    renderCart();
+    cart.forEach(item => {
+      $("#card" + item.product_variant)
+        .addClass("selected");
+    });
   }
 
 
-  // 🔹 SAVE ORDER
-  function saveOrder() {
 
-    if (cart.length == 0) {
-      swal("Error", "Add items", "error");
+  function saveOrder() {
+    if (!$("#customer").val()) {
+      swal(
+        "Error",
+        "Please select customer",
+        "error"
+      );
+      return;
+    }
+    if (cart.length === 0) {
+      swal("Error", "Select products", "error");
       return;
     }
 
@@ -263,7 +467,6 @@ function updatePrice(index, price) {
     fd.append('customer_id', $("#customer").val());
     fd.append('payment_mode', $("#payment_mode").val());
     fd.append('paid_amount', $("#paid").val());
-
     fd.append('items', JSON.stringify(cart));
 
     $.ajax({
@@ -275,34 +478,28 @@ function updatePrice(index, price) {
       success: function (res) {
 
         if (res.response.n == 1) {
-          swal("Success", "Order created", "success")
-            .then(() => location.href = "/orders/orders-list");
+          swal("Success", "Order Created", "success")
+            .then(() => location.reload());
         } else {
           swal("Error", res.response.msg, "error");
         }
-
       }
     });
   }
-
-</script>
-<script>
-
-  $("#variant").change(function () {
-
-    let price = $("#variant option:selected").data("price");
-
-    if (price) {
-      $("#price_preview").text("₹ " + price);
-    }
-
-  });
   function openModal() {
-    $("#modalTitle").text("Add Customer");
-    $("#customer_id").val('');
-    $("input").val('');
-    $("#customerModal").modal('show');
+
+    $("#name").val("");
+    $("#mobile").val("");
+    $("#address1").val("");
+    $("#area").val("");
+    $("#city").val("");
+    $("#pincode").val("");
+
+    $("#customerModal").modal("show");
+
   }
+
+
   function saveCustomer() {
 
     // Get values
@@ -432,7 +629,11 @@ function updatePrice(index, price) {
 
           $("#customerModal").modal('hide');
 
-          window.location.href = window.location.href;
+          $("#customer").append(
+            `<option value="${res.data.id}" selected>
+        ${name}
+    </option>`
+          ).trigger("change");
         } else {
 
           swal("Error", res.response.msg, "error");

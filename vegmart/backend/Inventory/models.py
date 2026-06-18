@@ -18,10 +18,9 @@ class Inventory(TrackingModel):
     INVENTORY_TYPE_CHOICES = [
             ('raw', 'Raw Material'),
             ('finished', 'Finished Goods'),
-            ('transit', 'Transit'),
+            ('packaging', 'Packaging'),
         ]
     warehouse = models.CharField(max_length=100)
-    product_variant = models.CharField(max_length=100)
     quantity = models.FloatField()
     batch = models.CharField(max_length=100)
     inventory_type = models.CharField(
@@ -29,6 +28,8 @@ class Inventory(TrackingModel):
         choices=INVENTORY_TYPE_CHOICES,
         default='finished'
     )
+    product_variant = models.CharField(max_length=100)
+
 
 
 class StockMovement(TrackingModel):

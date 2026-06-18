@@ -5,7 +5,14 @@ from helpers.models import TrackingModel
 
 from django.conf import settings
 
-
+# 1	Placed or Pending
+# 2	Confirmed
+# 3	Procurememt
+# 4	Production Ready
+# 5	Production
+# 6	Dispatch Ready
+# 7	Dispatched
+# 8	Delivered
 class Order(TrackingModel):
     customer_id = models.CharField(max_length=20)
 

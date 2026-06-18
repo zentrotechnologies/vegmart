@@ -152,6 +152,7 @@
             data: fd,
             processData: false,
             contentType: false,
+            headers: { "Authorization": "Bearer {{token}}" },
             beforeSend: function () {
                 swal({ icon: "info", text: "Loading...", buttons: false });
             },
@@ -178,20 +179,26 @@
     <td>
         <button class="btn btn-info btn-sm" onclick="viewOrder(${o.id})" title="View Order">👁️</button>
         <button class="btn btn-secondary btn-sm" onclick="printInvoice(${o.id})" title="Print Invoice">🧾</button>
-
-        ${o.status == 'pending' || o.status == 'placed'  ? `
-            <button class="btn btn-success btn-sm" onclick="confirmOrder(${o.id})" title="Confirm Order">✔</button>
-            <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" title="Cancel Order">✖</button>
+        ${`{{role_id}}` == 1  ? `
+            ${o.status == 'pending' || o.status == 'placed'  ? `
+                <button class="btn btn-success btn-sm" onclick="confirmOrder(${o.id})" title="Confirm Order">✔</button>
+                <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" title="Cancel Order">✖</button>
+            `: ``}
         `: ``}
 
+
+        ${`{{role_id}}` == 2 ||`{{role_id}}` == 1  ? `
 
         ${o.status == 'confirmed' ? `
             <button class="btn btn-primary btn-sm" onclick="dispatchOrder(${o.id})" title="Dispatch Order">🚚</button>
          `: ``}
+         `: ``}
 
+        ${`{{role_id}}` == 2 ||`{{role_id}}` == 1  ? `
 
         ${o.status == 'dispatched' ? `
             <button class="btn btn-primary btn-sm" onclick="deliverOrder(${o.id})" title="Delivered Order">Deliver</button>
+         `: ``}
          `: ``}
 
 
@@ -199,10 +206,13 @@
             <button class="btn btn-warning btn-sm" onclick="openPayment(${o.id})" title="Make Payment">₹</button>
          `: ``}
 
+        ${`{{role_id}}` == 3 ||`{{role_id}}` == 1  ? `
          
-        ${o.status != 'delivered' && o.status != 'cancelled' ? `
-            <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">  Procure</button>
+            ${o.status != 'delivered' && o.status != 'cancelled' && o.status == 'confirmed'? `
+                <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">  Procure</button>
+            `: ``}
          `: ``}
+         
 
 
 
@@ -317,8 +327,11 @@
 
         status = status.toLowerCase();
 
+        if (status === 'placed') return 'bg-warning';
         if (status === 'pending') return 'bg-warning';
         if (status === 'confirmed') return 'bg-primary';
+        if (status === 'procurement') return 'bg-info';
+        if (status === 'production') return 'bg-primary';
         if (status === 'delivered') return 'bg-success';
         if (status === 'cancelled') return 'bg-danger';
 

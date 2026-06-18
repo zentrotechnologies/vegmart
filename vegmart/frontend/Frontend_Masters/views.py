@@ -176,9 +176,11 @@ def add_product(request):
 
             # 🔥 get categories for dropdown
             cat_response = requests.get(get_category_list_url, headers=headers)
+            units_url = hosturl + '/api/Masters/unitlist'
+            units_res = requests.get(units_url, headers=headers)
+            units = units_res.json().get('data', [])
 
-
-            return render(request, 'Masters/Product/add_product.html',{'categories': cat_response.json()['data']})
+            return render(request, 'Masters/Product/add_product.html',{'categories': cat_response.json()['data'],"units":units})
 
     else:
         messages.error(request, 'Session expired. Please log in again.')
@@ -220,7 +222,13 @@ def edit_product(request, id):
             # Subcategories
             scat_res = requests.get(get_subcategory_list_url, headers=headers)
             subcategories = scat_res.json().get('data', [])
-
+            
+            
+            units_url = hosturl + '/api/Masters/unitlist'
+            units_res = requests.get(units_url, headers=headers)
+            units = units_res.json().get('data', [])
+            
+            
             # 🔥 IMPORTANT: GET VARIANTS
             variant_res = requests.post(
                 hosturl + "/api/Masters/productvariantbyproduct",
@@ -241,6 +249,7 @@ def edit_product(request, id):
                 'product': product_data,
                 'categories': categories,
                 'subcategories': subcategories,
+                'units':units,
                 'variants': variants   # 🔥 REQUIRED FOR FRONTEND
             }
         )

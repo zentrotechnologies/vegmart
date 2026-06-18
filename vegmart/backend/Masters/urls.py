@@ -44,6 +44,7 @@ urlpatterns = [
     path('productvariantbyproduct', productvariantbyproduct.as_view()),
 
 
+    path('unitlist', unitlist.as_view()),
 
 
 

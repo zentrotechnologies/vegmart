@@ -130,124 +130,216 @@ class requirement_by_order(GenericAPIView):
 
     def post(self, request):
 
-        order_id = request.data.get('order_id')
-        if order_id is None or order_id =='':
+        order_id = request.data.get("order_id")
+
+        if not order_id:
             return Response({
                 "data": {
                     "products": [],
                     "procurement_items": []
                 },
-                "response": {"n": 0, "msg": "Please enter order id"}
+                "response": {
+                    "n": 0,
+                    "msg": "Please enter order id"
+                }
             })
-        order_items = OrderItem.objects.filter(order=order_id)
-        if order_items.count() == 0:
+
+        order_items = OrderItem.objects.filter(
+            order=order_id
+        )
+
+        if not order_items.exists():
             return Response({
                 "data": {
                     "products": [],
                     "procurement_items": []
                 },
-                "response": {"n": 0, "msg": "Order items not found"}
+                "response": {
+                    "n": 0,
+                    "msg": "Order items not found"
+                }
             })
-        
+
         product_data = []
         procurement_summary = {}
 
-        product_variant_qs = ProductVariant.objects.filter(isActive=True)
-        product_qs = Product.objects.filter(isActive=True)
-        item_master = ProcurementItemMaster.objects.filter(isActive=True)
+        product_variants = ProductVariant.objects.filter(
+            isActive=True
+        )
 
-        for i in order_items:
+        products = Product.objects.filter(
+            isActive=True
+        )
 
-            ordered_qty = i.quantity
+        raw_products = RawProductMaster.objects.filter(
+            isActive=True
+        )
 
-            # STOCK
-            stock = Inventory.objects.filter(
-                product_variant=i.product_variant
-            ).aggregate(total=Sum('quantity'))['total'] or 0
+        for item in order_items:
+            print("item",item.product_variant)
+            ordered_qty = float(item.quantity or 0)
 
-            required_product_qty = max(0, ordered_qty - stock)
+            stock = (
+                Inventory.objects.filter(
+                    product_variant=item.product_variant
+                ).aggregate(
+                    total=Sum("quantity")
+                )["total"] or 0
+            )
 
-            # PRODUCT NAME
+            required_product_qty = max(
+                0,
+                ordered_qty - stock
+            )
+
+            variant = product_variants.filter(
+                id=item.product_variant
+            ).first()
+            print("variant",variant)
             product_name = ""
-            variant_obj = product_variant_qs.filter(id=i.product_variant).first()
-            product_id=''
-            product_unit=''
-            pack_size=0
+            product_id = ""
+            pack_size = 1
+            product_unit = ""
 
-            if variant_obj:
-                product_obj = product_qs.filter(id=variant_obj.product).first()
+            if variant:
+
+                pack_size = float(
+                    variant.pack_size or 1
+                )
+
+                product_id = variant.product
+
+                product_obj = products.filter(
+                    id=variant.product
+                ).first()
+
                 if product_obj:
                     product_name = product_obj.name
-                    product_id=variant_obj.product
-                    pack_size=variant_obj.pack_size
-                    product_unit=product_obj.unit
+                    product_unit = product_obj.unit
 
-
-
-
-            # SKIP if no need
             if required_product_qty <= 0:
+
+                product_data.append({
+                    "product_name": product_name,
+                    "product_variant": item.product_variant,
+                    "product_id": product_id,
+                    "ordered_qty": ordered_qty,
+                    "available_stock": stock,
+                    "required_qty": 0,
+                    "mapping_exist": False,
+                    "product_unit": product_unit,
+                    "pack_size": pack_size,
+                })
+
                 continue
 
-            # MAPPING
-            mappings = ProcurementToProductMapping.objects.filter(
-                product=i.product,
+            active_recipe = RecipeMaster.objects.filter(
+                product=str(product_id),
+                status="active",
                 isActive=True
-            )
-            if mappings.exists():
-                mapping_exist=True
-            else:
-                mapping_exist=False
+            ).first()
 
-            # TABLE 1 (PRODUCTS)
+            mappings = RecipeRawmaterial.objects.none()
+            mapping_exist = False
+
+            if active_recipe:
+
+                mappings = RecipeRawmaterial.objects.filter(
+                    recipe_id=str(active_recipe.id),
+                    isActive=True
+                )
+
+                mapping_exist = mappings.exists()
+            else:
+                print("No Active  recipe")
+                
+                
             product_data.append({
                 "product_name": product_name,
-                "product_variant": i.product_variant,
+                "product_variant": item.product_variant,
                 "product_id": product_id,
                 "ordered_qty": ordered_qty,
                 "available_stock": stock,
                 "required_qty": required_product_qty,
-                "mapping_exist":mapping_exist,
-                "product_unit":product_unit,
-                "pack_size":pack_size,
-
+                "mapping_exist": mapping_exist,
+                "product_unit": product_unit,
+                "pack_size": pack_size,
             })
-            for m in mappings:
 
-                item_id = m.procurement_item
-                factor = m.conversion_factor
+            if not active_recipe:
+                continue
 
-                required_raw = required_product_qty * factor * float(pack_size)
+            output_qty = float(
+                active_recipe.standard_output_qty or 1
+            )
+
+            production_qty = (
+                required_product_qty * pack_size
+            )
+
+            for raw in mappings:
+
+                recipe_qty = float(
+                    raw.quantity or 0
+                )
+
+                required_raw_qty = (
+                    recipe_qty / output_qty
+                ) * production_qty
+
+                wastage = float(
+                    raw.wastage_percent or 0
+                )
+
+                required_raw_qty += (
+                    required_raw_qty * wastage / 100
+                )
+
+                item_id = str(raw.raw_product_id)
 
                 if item_id not in procurement_summary:
                     procurement_summary[item_id] = 0
 
-                procurement_summary[item_id] += required_raw
+                procurement_summary[item_id] += required_raw_qty
 
-        # TABLE 2 (PROCUREMENT ITEMS)
         procurement_data = []
-        print("procurement_summary",procurement_summary)
+
         for item_id, qty in procurement_summary.items():
-            item_obj = item_master.filter(id=item_id).first()
+
+            raw_item = raw_products.filter(
+                id=item_id
+            ).first()
 
             procurement_data.append({
+
                 "procurement_item": item_id,
-                "procurement_item_name": item_obj.name if item_obj else "",
-                "unit": item_obj.unit if item_obj else "",
-                "required_qty": round(qty, 2)
+
+                "procurement_item_name":
+                    raw_item.name if raw_item else "",
+
+                "unit":
+                    raw_item.unit if raw_item else "",
+
+                "required_qty":
+                    round(qty, 2)
             })
 
         return Response({
+
             "data": {
                 "products": product_data,
                 "procurement_items": procurement_data
             },
-            "response": {"n": 1, "msg": "Requirement calculated"}
+
+            "response": {
+                "n": 1,
+                "msg": "Requirement calculated"
+            }
         })
     
 
 
-class addprocurementitemmaster(GenericAPIView):
+class addrawproductmaster(GenericAPIView):
 
     def post(self, request):
 
@@ -264,12 +356,12 @@ class addprocurementitemmaster(GenericAPIView):
                 "response": {"n": 0, "msg": "Item code & name required", "status": "error"}
             })
 
-        if ProcurementItemMaster.objects.filter(item_code=data['item_code'], isActive=True).exists():
+        if RawProductMaster.objects.filter(item_code=data['item_code'], isActive=True).exists():
             return Response({
                 "response": {"n": 0, "msg": "Item already exists", "status": "error"}
             })
 
-        serializer = ProcurementItemMasterSerializer(data=data)
+        serializer = RawProductMasterSerializer(data=data)
 
         if serializer.is_valid():
             serializer.save()
@@ -280,12 +372,12 @@ class addprocurementitemmaster(GenericAPIView):
 
         return Response({"response": {"n": 0, "msg": "Error", "status": "error"}})
 
-class procurementitemmaster_list_pagination_api(GenericAPIView):
+class rawproductmaster_list_pagination_api(GenericAPIView):
     pagination_class = CustomPagination
 
     def post(self, request):
 
-        objs = ProcurementItemMaster.objects.filter(isActive=True).order_by('-id')
+        objs = RawProductMaster.objects.filter(isActive=True).order_by('-id')
 
         search = request.data.get('search')
 
@@ -297,15 +389,15 @@ class procurementitemmaster_list_pagination_api(GenericAPIView):
             )
 
         page = self.paginate_queryset(objs)
-        serializer = ProcurementItemMasterSerializer(page, many=True)
+        serializer = CustomRawProductMasterSerializer(page, many=True)
 
         return self.get_paginated_response(serializer.data)
 
-class procurementitemmasterlist(GenericAPIView):
+class rawproductmasterlist(GenericAPIView):
 
     def post(self, request):
 
-        objs = ProcurementItemMaster.objects.filter(isActive=True).order_by('-id')
+        objs = RawProductMaster.objects.filter(isActive=True).order_by('-id')
 
         search = request.data.get('search')
 
@@ -316,7 +408,7 @@ class procurementitemmasterlist(GenericAPIView):
                 Q(category__icontains=search)
             )
 
-        serializer = ProcurementItemMasterSerializer(objs, many=True)
+        serializer = RawProductMasterSerializer(objs, many=True)
 
         return Response({
                             "data": serializer.data,
@@ -325,13 +417,13 @@ class procurementitemmasterlist(GenericAPIView):
 
 
 
-class procurementitemmasterupdate(GenericAPIView):
+class rawproductmasterupdate(GenericAPIView):
 
     def post(self, request):
 
         id = request.data.get('itemid')
 
-        obj = ProcurementItemMaster.objects.filter(id=id, isActive=True).first()
+        obj = RawProductMaster.objects.filter(id=id, isActive=True).first()
 
         if not obj:
             return Response({"response": {"n": 0, "msg": "Item not found"}})
@@ -344,7 +436,7 @@ class procurementitemmasterupdate(GenericAPIView):
             'is_milk': request.data.get('is_milk') == 'true'
         }
 
-        serializer = ProcurementItemMasterSerializer(obj, data=data, partial=True)
+        serializer = RawProductMasterSerializer(obj, data=data, partial=True)
 
         if serializer.is_valid():
             serializer.save()
@@ -355,13 +447,13 @@ class procurementitemmasterupdate(GenericAPIView):
         return Response({"response": {"n": 0, "msg": "Error"}})
 
 
-class procurementitemmasterdelete(GenericAPIView):
+class rawproductmasterdelete(GenericAPIView):
 
     def post(self, request):
 
         id = request.data.get('itemid')
 
-        obj = ProcurementItemMaster.objects.filter(id=id, isActive=True).first()
+        obj = RawProductMaster.objects.filter(id=id, isActive=True).first()
 
         if not obj:
             return Response({"response": {"n": 0, "msg": "Item not found"}})
@@ -371,16 +463,16 @@ class procurementitemmasterdelete(GenericAPIView):
 
         return Response({"response": {"n": 1, "msg": "Deleted"}})
 
-class procurementitemmasterbyid(GenericAPIView):
+class rawproductmasterbyid(GenericAPIView):
 
     def post(self, request):
 
         id = request.data.get('itemid')
 
-        obj = ProcurementItemMaster.objects.filter(id=id, isActive=True).first()
+        obj = RawProductMaster.objects.filter(id=id, isActive=True).first()
 
         if obj:
-            serializer = ProcurementItemMasterSerializer(obj)
+            serializer = RawProductMasterSerializer(obj)
             return Response({"data": serializer.data, "response": {"n": 1}})
 
         return Response({"response": {"n": 0, "msg": "Not found"}})
@@ -388,33 +480,172 @@ class procurementitemmasterbyid(GenericAPIView):
 
 
 
-class addmapping(GenericAPIView):
+class createrecipe(GenericAPIView):
+    @transaction.atomic
     def post(self, request):
+        try:
+            # -----------------------------
+            # Recipe Master Data
+            # -----------------------------
+            recipe_data = {
+                "recipe_code": request.data.get("recipe_code"),
+                "recipe_name": request.data.get("recipe_name"),
+                "product": request.data.get("product_id"),
+                "version": request.data.get("version"),
+                "standard_output_qty": request.data.get("standard_output_qty"),
+                "output_unit": request.data.get("output_unit"),
+                "remarks": request.data.get("remarks"),
+            }
+            print("request.data",request.data)
 
-        data = {
-            "procurement_item": request.data.get("procurement_item"),
-            "product": request.data.get("product"),
-            "conversion_factor": request.data.get("conversion_factor"),
-            "wastage_percent": request.data.get("wastage_percent") or 0
-        }
+            serializer = RecipeMasterSerializer(data=recipe_data)
 
-        serializer = ProcurementToProductMappingSerializer(data=data)
+            if not serializer.is_valid():
+                first_key, first_value = next(iter(serializer.errors.items()))
+                print("1",f"{first_key} : {first_value[0]}")
+                return Response(
+                    {
+                        "data": serializer.errors,
+                        "response": {
+                            "n": 0,
+                            "msg": f"{first_key} : {first_value[0]}",
+                            "status": "error",
+                        },
+                    },
+                    
+                )
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                "response": {"n":1, "msg":"Mapping added", "status":"success"}
-            })
+            recipe = serializer.save()
 
-        return Response({
-            "response": {"n":0, "msg":serializer.errors, "status":"error"}
-        })
+            # -----------------------------
+            # Parse Inputs JSON
+            # -----------------------------
+            try:
+                inputs = json.loads(request.data.get("inputs", "[]"))
+            except json.JSONDecodeError:
+                transaction.set_rollback(True)
+                return Response(
+                    {
+                        "response": {
+                            "n": 0,
+                            "msg": "Invalid inputs JSON",
+                            "status": "error",
+                        }
+                    },
+                )
 
+            # -----------------------------
+            # Save Recipe Inputs
+            # -----------------------------
+            recipe_inputs = []
+
+            for item in inputs:
+                procurement_item_id = item.get("procurement_item_id")
+                quantity = item.get("quantity")
+                unit = item.get("unit")
+
+                if not procurement_item_id:
+                    raise ValueError("Procurement Item is required")
+
+                if not quantity:
+                    raise ValueError("Input Quantity is required")
+
+                recipe_inputs.append(
+                    RecipeRawmaterial(
+                        recipe_id=recipe.id,
+                        raw_product_id=procurement_item_id,
+                        quantity=float(quantity),
+                        unit=unit,
+                        wastage_percent=float(
+                            item.get("wastage_percent") or 0
+                        ),
+                    )
+                )
+            for obj in recipe_inputs:
+                print("recipe_id =", obj.recipe_id)
+                print("raw_product_id =", obj.raw_product_id)
+                print("quantity =", obj.quantity)
+                print("unit =", obj.unit, len(str(obj.unit)))
+                print("wastage_percent =", obj.wastage_percent)
+            RecipeRawmaterial.objects.bulk_create(recipe_inputs)
+
+            # -----------------------------
+            # Parse Outputs JSON
+            # -----------------------------
+            # try:
+            #     outputs = json.loads(request.data.get("outputs", "[]"))
+            # except json.JSONDecodeError:
+            #     transaction.set_rollback(True)
+            #     return Response(
+            #         {
+            #             "response": {
+            #                 "n": 0,
+            #                 "msg": "Invalid outputs JSON",
+            #                 "status": "error",
+            #             }
+            #         },
+            #     )
+
+            # -----------------------------
+            # Save Recipe Outputs
+            # -----------------------------
+            # recipe_outputs = []
+
+            # for item in outputs:
+
+            #     product_variant_id = item.get("product_variant_id")
+            #     quantity = item.get("quantity")
+
+            #     if not product_variant_id:
+            #         raise ValueError("Output Product is required")
+
+            #     if not quantity:
+            #         raise ValueError("Output Quantity is required")
+
+            #     recipe_outputs.append(
+            #         RecipeOutput(
+            #             recipe=recipe,
+            #             product_variant_id=product_variant_id,
+            #             quantity=float(quantity),
+            #             unit=item.get("unit"),
+            #             is_primary_output=item.get(
+            #                 "is_primary_output", False
+            #             ),
+            #         )
+            #     )
+
+            # RecipeOutput.objects.bulk_create(recipe_outputs)
+
+            return Response(
+                {
+                    "recipe_id": recipe.id,
+                    "response": {
+                        "n": 1,
+                        "msg": "Recipe created successfully",
+                        "status": "success",
+                    },
+                },
+            )
+
+        except Exception as e:
+            transaction.set_rollback(True)
+            print("2",str(e))
+            return Response(
+                {
+                    "response": {
+                        "n": 0,
+                        "msg": str(e),
+                        "status": "error",
+                    }
+                },
+            )
+            
+            
 class mappinglist(GenericAPIView):
     def get(self, request):
 
-        objs = ProcurementToProductMapping.objects.filter(isActive=True)
-        serializer = ProcurementToProductMappingSerializer(objs, many=True)
+        objs = RecipeMaster.objects.filter(isActive=True)
+        serializer = RecipeMasterSerializer(objs, many=True)
 
         return Response({
             "data": serializer.data
@@ -425,7 +656,7 @@ class mapping_list_pagination_api(GenericAPIView):
 
     def post(self, request):
 
-        objs = ProcurementToProductMapping.objects.filter(isActive=True).order_by('-id')
+        objs = RecipeMaster.objects.filter(isActive=True).order_by('-id')
 
         search = request.data.get("search")
 
@@ -436,7 +667,7 @@ class mapping_list_pagination_api(GenericAPIView):
             )
 
         page = self.paginate_queryset(objs)
-        serializer = CustomProcurementToProductMappingSerializer(page, many=True)
+        serializer = CustomRecipeMasterSerializer(page, many=True)
 
         return self.get_paginated_response(serializer.data)
 
@@ -445,7 +676,7 @@ class variant_grouped_mapping_list_pagination_api(GenericAPIView):
 
     def post(self, request):
 
-        objs = ProcurementToProductMapping.objects.filter(isActive=True).order_by('-id')
+        objs = RecipeMaster.objects.filter(isActive=True).order_by('-id')
 
         search = request.data.get("search")
 
@@ -456,7 +687,7 @@ class variant_grouped_mapping_list_pagination_api(GenericAPIView):
             )
 
         # 🔥 SERIALIZE FIRST
-        serializer = CustomProcurementToProductMappingSerializer(objs, many=True)
+        serializer = CustomRecipeMasterSerializer(objs, many=True)
         data = serializer.data
 
         # ================= GROUPING =================
@@ -488,9 +719,9 @@ class mappingupdate(GenericAPIView):
     def post(self, request):
 
         id = request.data.get("mapping_id")
-        obj = ProcurementToProductMapping.objects.filter(id=id).first()
+        obj = RecipeMaster.objects.filter(id=id).first()
 
-        serializer = ProcurementToProductMappingSerializer(obj, data=request.data, partial=True)
+        serializer = RecipeMasterSerializer(obj, data=request.data, partial=True)
 
         if serializer.is_valid():
             serializer.save()
@@ -508,7 +739,7 @@ class mappingdelete(GenericAPIView):
 
         id = request.data.get("mapping_id")
 
-        obj = ProcurementToProductMapping.objects.filter(id=id).first()
+        obj = RecipeMaster.objects.filter(id=id).first()
         obj.isActive = False
         obj.save()
 
@@ -522,13 +753,13 @@ class get_mapping_by_product(GenericAPIView):
         print("request.data",request.data)
         product = request.data.get("product")
 
-        objs = ProcurementToProductMapping.objects.filter(
+        objs = RecipeMaster.objects.filter(
             product=product,
             isActive=True
         )
         print("objs",objs.count())
         if objs.exists():
-            serializer = CustomProcurementToProductMappingSerializer(objs, many=True)
+            serializer = CustomRecipeMasterSerializer(objs, many=True)
 
             return Response({
                 "data": serializer.data,
@@ -552,7 +783,28 @@ class create_procurement(GenericAPIView):
             # quantity = float(request.data.get("quantity") or 0)
             paid_amount = float(request.data.get("paid_amount") or 0)
             order_id = request.data.get("order_id")
-
+            orders_obj=None
+            if order_id is not None and order_id !='':
+                orders_obj=Order.objects.filter(id=order_id,isActive=True).first()
+                if orders_obj is not None:
+                    if orders_obj.status =='placed' or orders_obj.status =='pending' :
+                        return Response({"response": {"n": 0, "msg": "Order must be confirmed by the admin before procurement can begin."}})
+                    elif orders_obj.status =='procurement':
+                        return Response({"response": {"n": 0, "msg": "This order has already been moved to procurement."}})
+                    elif orders_obj.status =='production-ready':
+                        return Response({"response": {"n": 0, "msg": "This order is already ready for production and cannot be moved back to procurement."}})
+                    elif orders_obj.status =='production':
+                        return Response({"response": {"n": 0, "msg": "This order is already in production and cannot be moved back to procurement."}})
+                    elif orders_obj.status =='dispatched-ready':
+                        return Response({"response": {"n": 0, "msg": "This order has already ready for dispatched and cannot be moved to procurement."}})
+                    elif orders_obj.status =='dispatched':
+                        return Response({"response": {"n": 0, "msg": "This order has already been dispatched and cannot be moved to procurement."}})
+                    elif orders_obj.status =='delivered':
+                        return Response({"response": {"n": 0, "msg": "This order has already been delivered and cannot be moved to procurement."}})
+                    elif orders_obj.status =='confirmed':
+                        orders_obj.status='procurement'
+                else:
+                    return Response({"response": {"n": 0, "msg": "order not found"}})
             items = request.data.get("items", [])
 
             # 🔒 basic validation
@@ -570,6 +822,7 @@ class create_procurement(GenericAPIView):
                 order_id=order_id,
                 paid_amount=paid_amount
             )
+
             # ================= PRODUCTS =================
             for p in products:
 
@@ -614,7 +867,8 @@ class create_procurement(GenericAPIView):
             entry.total_amount = total_amount
             entry.credit_amount = credit_amount
             entry.save()
-
+            if orders_obj is not None:
+                orders_obj.save()
             return Response({
                 "data": {
                     "procurement_id": entry.id,
@@ -775,3 +1029,342 @@ class delete_procurement(GenericAPIView):
             "data": {},
             "response": {"n": 1, "msg": "Deleted successfully", "status": "success"}
         })
+        
+        
+        
+        
+class recipe_list_pagination_api(GenericAPIView):
+    pagination_class = CustomPagination
+
+    def post(self, request):
+
+        objs = RecipeMaster.objects.filter(
+            isActive=True
+        ).order_by('-id')
+
+        search = request.data.get('search')
+        status = request.data.get('status')
+
+        if search:
+            objs = objs.filter(
+                Q(recipe_code__icontains=search) |
+                Q(recipe_name__icontains=search) |
+                Q(product__icontains=search)
+            )
+
+        if status:
+            objs = objs.filter(status=status)
+
+        page = self.paginate_queryset(objs)
+
+        serializer = CustomRecipeMasterSerializer(
+            page,
+            many=True
+        )
+
+        return self.get_paginated_response(
+            serializer.data
+        )
+        
+class CloneRecipeAPI(GenericAPIView):
+
+    @transaction.atomic
+    def post(self, request):
+
+        recipe_id = request.data.get("recipe_id")
+
+        try:
+
+            recipe = RecipeMaster.objects.get(
+                id=recipe_id,
+                isActive=True
+            )
+
+            new_recipe = RecipeMaster.objects.create(
+                recipe_code=recipe.recipe_code,
+                recipe_name=recipe.recipe_name,
+                product=recipe.product,
+                version=recipe.version + 1,
+                standard_output_qty=recipe.standard_output_qty,
+                output_unit=recipe.output_unit,
+                remarks=recipe.remarks,
+                status='draft'
+            )
+
+            raws = RecipeRawmaterial.objects.filter(
+                recipe_id=str(recipe.id)
+            )
+
+            RecipeRawmaterial.objects.bulk_create([
+                RecipeRawmaterial(
+                    recipe_id=str(new_recipe.id),
+                    raw_product_id=raw.raw_product_id,
+                    quantity=raw.quantity,
+                    unit=raw.unit,
+                    wastage_percent=raw.wastage_percent,
+                    remarks=raw.remarks
+                )
+                for raw in raws
+            ])
+
+            return Response({
+                "response": {
+                    "n": 1,
+                    "msg": f"Recipe Version V{new_recipe.version} created",
+                    "status": "success"
+                }
+            })
+
+        except Exception as e:
+
+            return Response({
+                "response": {
+                    "n": 0,
+                    "msg": str(e),
+                    "status": "error"
+                }
+            })
+            
+            
+class ActivateRecipeAPI(GenericAPIView):
+
+    def post(self, request):
+
+        recipe_id = request.data.get("recipe_id")
+
+        try:
+
+            recipe = RecipeMaster.objects.get(
+                id=recipe_id,
+                isActive=True
+            )
+
+            RecipeMaster.objects.filter(
+                recipe_code=recipe.recipe_code
+            ).update(
+                status='inactive'
+            )
+
+            recipe.status = 'active'
+            recipe.save()
+
+            return Response({
+                "response": {
+                    "n": 1,
+                    "msg": "Recipe activated successfully",
+                    "status": "success"
+                }
+            })
+
+        except Exception as e:
+
+            return Response({
+                "response": {
+                    "n": 0,
+                    "msg": str(e),
+                    "status": "error"
+                }
+            })
+            
+            
+class DeactivateRecipeAPI(GenericAPIView):
+
+    def post(self, request):
+
+        recipe_id = request.data.get("recipe_id")
+
+        try:
+
+            recipe = RecipeMaster.objects.get(
+                id=recipe_id,
+                isActive=True
+            )
+
+            recipe.status = 'inactive'
+            recipe.save()
+
+            return Response({
+                "response": {
+                    "n": 1,
+                    "msg": "Recipe deactivated successfully",
+                    "status": "success"
+                }
+            })
+
+        except Exception as e:
+
+            return Response({
+                "response": {
+                    "n": 0,
+                    "msg": str(e),
+                    "status": "error"
+                }
+            })
+            
+            
+            
+class DeleteRecipeAPI(GenericAPIView):
+
+    def post(self, request):
+
+        recipe_id = request.data.get("recipe_id")
+
+        try:
+
+            RecipeMaster.objects.filter(
+                id=recipe_id
+            ).update(
+                isActive=False
+            )
+
+            RecipeRawmaterial.objects.filter(
+                recipe_id=str(recipe_id)
+            ).update(
+                isActive=False
+            )
+
+            return Response({
+                "response": {
+                    "n": 1,
+                    "msg": "Recipe deleted successfully",
+                    "status": "success"
+                }
+            })
+
+        except Exception as e:
+
+            return Response({
+                "response": {
+                    "n": 0,
+                    "msg": str(e),
+                    "status": "error"
+                }
+            })      
+            
+class recipe_details(GenericAPIView):
+
+    def get(self, request):
+
+        recipe_id = request.GET.get("recipe_id")
+
+        try:
+
+            recipe = RecipeMaster.objects.get(
+                id=recipe_id,
+                isActive=True
+            )
+
+            recipe_data = CustomRecipeMasterSerializer(
+                recipe
+            ).data
+
+            raw_materials = RecipeRawmaterial.objects.filter(
+                recipe_id=str(recipe.id),
+                isActive=True
+            )
+
+            raw_material_list = []
+
+            for raw in raw_materials:
+
+                raw_product_name = None
+
+                raw_product = RawProductMaster.objects.filter(
+                    id=raw.raw_product_id
+                ).first()
+
+                if raw_product:
+                    raw_product_name = raw_product.name
+
+                unit_name = None
+
+                unit = UnitMaster.objects.filter(
+                    id=raw.unit
+                ).first()
+
+                if unit:
+                    unit_name = unit.short_name
+
+                raw_material_list.append({
+                    "id": raw.id,
+                    "raw_product_id": raw.raw_product_id,
+                    "raw_product_name": raw_product_name,
+                    "quantity": raw.quantity,
+                    "unit": raw.unit,
+                    "unit_name": unit_name,
+                    "wastage_percent": raw.wastage_percent,
+                    "remarks": raw.remarks
+                })
+
+            recipe_data["raw_materials"] = raw_material_list
+
+            return Response({
+                "response": {
+                    "n": 1,
+                    "msg": "Success",
+                    "status": "success"
+                },
+                "data": recipe_data
+            })
+
+        except RecipeMaster.DoesNotExist:
+
+            return Response({
+                "response": {
+                    "n": 0,
+                    "msg": "Recipe not found",
+                    "status": "error"
+                }
+            })
+            
+class UpdateRecipe(GenericAPIView):
+
+    @transaction.atomic
+    def post(self, request):
+        print("request.data",request.data)
+        recipe = RecipeMaster.objects.get(
+            id=request.data.get("recipe_id")
+        )
+
+        recipe.recipe_name = request.data.get("recipe_name")
+        recipe.product = request.data.get("product_id")
+        recipe.standard_output_qty = request.data.get("standard_output_qty")
+        recipe.output_unit = request.data.get("output_unit")
+        recipe.remarks = request.data.get("remarks")
+        recipe.save()
+
+        RecipeRawmaterial.objects.filter(
+            recipe_id=str(recipe.id)
+        ).delete()
+
+        inputs = json.loads(
+            request.data.get("inputs", "[]")
+        )
+
+        for item in inputs:
+
+            if (
+                not item.get("procurement_item_id")
+                or not item.get("quantity")
+                or not item.get("unit")
+            ):
+                continue
+
+            RecipeRawmaterial.objects.create(
+                recipe_id=str(recipe.id),
+                raw_product_id=item["procurement_item_id"],
+                quantity=float(item["quantity"]),
+                unit=item["unit"],
+                wastage_percent=float(
+                    item.get("wastage_percent", 0)
+                )
+            )
+
+        return Response({
+            "response":{
+                "n":1,
+                "msg":"Recipe Updated",
+                "status":"success"
+            }
+        })
+            

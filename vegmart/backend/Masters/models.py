@@ -29,3 +29,17 @@ class ProductVariant(TrackingModel):
     b2b_price = models.FloatField()
 
 
+class UnitMaster(TrackingModel):
+
+    unit_name = models.CharField(max_length=100)
+    short_name = models.CharField(max_length=20)
+    parent_unit = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    conversion_factor = models.FloatField(
+        default=1
+    )

@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="">
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div class="row align-items-center">
+
+                <div class="col-md-4">
+                    <h5 class="mb-0">
+                        Recipe Management
+                    </h5>
+                </div>
+
+                <div class="col-md-4">
+
+                    <input type="text"
+                           class="form-control"
+                           id="searchRecipe"
+                           placeholder="Search Recipe">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <select class="form-control"
+                            id="statusFilter">
+
+                        <option value="">
+                            All Status
+                        </option>
+
+                        <option value="active">
+                            Active
+                        </option>
+
+                        <option value="draft">
+                            Draft
+                        </option>
+
+                        <option value="inactive">
+                            Inactive
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2 text-end">
+
+                    <a href="/procurement/create-recipe"
+                       class="btn btn-success">
+
+                        + New Recipe
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Recipe Code</th>
+                <th>Recipe Name</th>
+                <th>Product</th>
+                <th>Version</th>
+                <th>Output Qty</th>
+                <th>Status</th>
+                <th width="220">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody id="table_body">
+            <tr>
+                <td colspan="7" class="text-center">
+                    Loading...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-12">
+        <ul id="pagination-demo" class="pagination-sm justify-content-center"></ul>
+    </div>
+</div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+function cloneRecipe(recipeId){
+
+    swal({
+
+        title: "Create New Version?",
+
+        text: "This will create next version of recipe.",
+
+        icon: "warning",
+
+        buttons: true
+
+    })
+    .then((confirm)=>{
+
+        if(confirm){
+
+            $.ajax({
+
+                url:
+                hosturl +
+                "/api/Procurement/clonerecipe",
+
+                type:"POST",
+
+                data:{
+                    csrfmiddlewaretoken:
+                    "{{csrf_token}}",
+
+                    recipe_id:
+                    recipeId
+                },
+
+                success:function(res){
+
+                    if(
+                        res.response.n == 1
+                    ){
+
+                        swal(
+                            "Success",
+                            "New Version Created",
+                            "success"
+                        )
+                        .then(()=>{
+                            location.reload();
+                        });
+
+                    }
+                    else{
+
+                        swal(
+                            "Error",
+                            res.response.msg,
+                            "error"
+                        );
+
+                    }
+
+                }
+
+            });
+
+        }
+
+    });
+
+}
+
+function activateRecipe(recipeId){
+
+    swal({
+
+        title:
+        "Activate Recipe?",
+
+        text:
+        "Current active version will become inactive.",
+
+        icon:
+        "warning",
+
+        buttons:
+        true
+
+    })
+    .then((confirm)=>{
+
+        if(confirm){
+
+            $.ajax({
+
+                url:
+                hosturl +
+                "/api/Procurement/activaterecipe",
+
+                type:
+                "POST",
+
+                data:{
+
+                    csrfmiddlewaretoken:
+                    "{{csrf_token}}",
+
+                    recipe_id:
+                    recipeId
+
+                },
+
+                success:function(res){
+
+                    if(
+                        res.response.n == 1
+                    ){
+
+                        swal(
+                            "Success",
+                            "Recipe Activated",
+                            "success"
+                        )
+                        .then(()=>{
+                            location.reload();
+                        });
+
+                    }
+                    else{
+
+                        swal(
+                            "Error",
+                            res.response.msg,
+                            "error"
+                        );
+
+                    }
+
+                }
+
+            });
+
+        }
+
+    });
+
+}
+
+function deactivateRecipe(recipeId){
+
+    swal({
+        title:"Deactivate Recipe?",
+        icon:"warning",
+        buttons:true
+    })
+    .then((confirm)=>{
+
+        if(confirm){
+
+            $.ajax({
+
+                url:hosturl +
+                "/api/Procurement/deactivaterecipe",
+
+                type:"POST",
+
+                data:{
+                    csrfmiddlewaretoken:"{{csrf_token}}",
+                    recipe_id:recipeId
+                },
+
+                success:function(res){
+
+                    swal(
+                        res.response.status,
+                        res.response.msg,
+                        res.response.status
+                    ).then(()=>{
+                        location.reload();
+                    });
+
+                }
+
+            });
+
+        }
+
+    });
+
+}
+function deleteRecipe(recipeId){
+
+    swal({
+        title:"Delete Recipe?",
+        text:"This action cannot be undone.",
+        icon:"warning",
+        buttons:true
+    })
+    .then((confirm)=>{
+
+        if(confirm){
+
+            $.ajax({
+
+                url:hosturl +
+                "/api/Procurement/deleterecipe",
+
+                type:"POST",
+
+                data:{
+                    csrfmiddlewaretoken:"{{csrf_token}}",
+                    recipe_id:recipeId
+                },
+
+                success:function(res){
+
+                    swal(
+                        res.response.status,
+                        res.response.msg,
+                        res.response.status
+                    ).then(()=>{
+                        loadRecipes(1);
+                    });
+
+                }
+
+            });
+
+        }
+
+    });
+
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twbs-pagination/1.4.2/jquery.twbsPagination.min.js"></script>
+
+<script>
+let isPaginationInitialized = false;
+
+$(document).ready(function(){
+
+    loadRecipes(1);
+
+    $("#searchRecipe").on("keyup", function(){
+        resetPagination();
+        loadRecipes(1);
+    });
+
+    $("#statusFilter").on("change", function(){
+        resetPagination();
+        loadRecipes(1);
+    });
+
+});
+
+function resetPagination(){
+
+    if(isPaginationInitialized){
+        $('#pagination-demo').twbsPagination('destroy');
+        isPaginationInitialized = false;
+    }
+
+}
+function loadRecipes(page){
+
+    let fd = new FormData();
+
+    fd.append("page", page);
+    fd.append("search", $("#searchRecipe").val());
+    fd.append("status", $("#statusFilter").val());
+    fd.append("csrfmiddlewaretoken", "{{csrf_token}}");
+
+    $.ajax({
+
+        url: hosturl + "/api/Procurement/recipe_list_pagination_api",
+        type: "POST",
+        data: fd,
+        processData: false,
+        contentType: false,
+
+        success: function(res){
+
+            let html = "";
+
+            if(res.results.length > 0){
+
+                $.each(res.results, function(i, recipe){
+
+                    let badge = '';
+
+                    if(recipe.status == 'active'){
+                        badge = '<span class="badge bg-success">Active</span>';
+                    }
+                    else if(recipe.status == 'draft'){
+                        badge = '<span class="badge bg-warning">Draft</span>';
+                    }
+                    else{
+                        badge = '<span class="badge bg-danger">Inactive</span>';
+                    }
+
+                    html += `
+                    <tr>
+
+                        <td>${recipe.recipe_code}</td>
+
+                        <td>
+                            <b>${recipe.recipe_name}</b>
+                        </td>
+
+                        <td>${recipe.product_name || ''}</td>
+
+                        <td>
+                            <span class="badge bg-primary">
+                                V${recipe.version}
+                            </span>
+                        </td>
+
+                        <td>
+                            ${recipe.standard_output_qty}
+                            ${recipe.output_unit_name}
+                        </td>
+
+                        <td>${badge}</td>
+
+                        <td>
+                            <div class="btn-group">
+
+                                <a href="/procurement/view-recipe/${recipe.id}"
+                                class="btn btn-info btn-sm">
+                                    View
+                                </a>
+
+                                <a href="/procurement/edit-recipe/${recipe.id}"
+                                class="btn btn-primary btn-sm">
+                                    Edit
+                                </a>
+
+                                <button
+                                    class="btn btn-warning btn-sm"
+                                    onclick="cloneRecipe('${recipe.id}')">
+                                    Clone
+                                </button>
+
+                                ${
+                                    recipe.status != 'active'
+                                    ?
+                                    `<button class="btn btn-success btn-sm"
+                                        onclick="activateRecipe('${recipe.id}')">
+                                        Activate
+                                    </button>`
+                                    :
+                                    `<button class="btn btn-secondary btn-sm"
+                                        onclick="deactivateRecipe('${recipe.id}')">
+                                        Deactivate
+                                    </button>`
+                                }
+
+                                <button
+                                    class="btn btn-danger btn-sm"
+                                    onclick="deleteRecipe('${recipe.id}')">
+                                    Delete
+                                </button>
+
+                            </div>
+                        </td>
+
+                    </tr>
+                    `;
+                });
+
+                $("#table_body").html(html);
+
+                if(!isPaginationInitialized){
+
+                    let totalPages =
+                        Math.ceil(res.count / res.page_size);
+
+                    $('#pagination-demo').twbsPagination({
+
+                        totalPages: totalPages || 1,
+                        visiblePages: 5,
+
+                        onPageClick: function(event, p){
+
+                            if(p != page){
+                                loadRecipes(p);
+                            }
+
+                        }
+
+                    });
+
+                    isPaginationInitialized = true;
+                }
+
+            }
+            else{
+
+                $("#table_body").html(`
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            No Recipes Found
+                        </td>
+                    </tr>
+                `);
+
+            }
+
+        }
+
+    });
+
+}
+</script>
+{% endblock %}

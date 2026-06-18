@@ -10,6 +10,8 @@ from Masters.models import ProductVariant
 from .serializers import *
 from User.common import CustomPagination
 from django.db import transaction
+from User.jwt import userJWTAuthentication
+from rest_framework import permissions
 
 
 # 🔥 SAFE FLOAT
@@ -126,7 +128,8 @@ class createorder(GenericAPIView):
 # 🟢 ORDER LIST (PAGINATION)
 # =====================================================
 class order_list_pagination_api(GenericAPIView):
-
+    authentication_classes=[userJWTAuthentication]
+    permission_classes = (permissions.IsAuthenticated,)
     pagination_class = CustomPagination
 
     def post(self, request):
@@ -134,13 +137,17 @@ class order_list_pagination_api(GenericAPIView):
         search = request.data.get('search')
 
         orders = Order.objects.filter(isActive=True).order_by('-id')
-
+        print("orders",orders.count())
         if search:
             orders = orders.filter(
                 Q(customer_id__icontains=search) |
                 Q(status__icontains=search)
             )
-
+        if request.user.role_id==3:
+            orders=orders.exclude(Q(status="pending")|Q(status="placed")|Q(status="cancelled"))
+        if request.user.role_id==4:
+            orders=orders.exclude(Q(status="pending")|Q(status="placed")|Q(status="cancelled")|Q(status="confirmed"))
+        
         page = self.paginate_queryset(orders)
         serializer = CustomOrderSerializer(page, many=True)
 

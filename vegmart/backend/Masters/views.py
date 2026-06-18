@@ -312,8 +312,8 @@ class addproduct(GenericAPIView):
         })
 class productlist(GenericAPIView):
     def get(self, request):
-        
-        objs = Product.objects.filter(isActive=True).order_by('id')
+        product_ids=list(ProductVariant.objects.filter(isActive=True).values_list("product",flat=True))
+        objs = Product.objects.filter(id__in=product_ids,isActive=True).order_by('id')
         serializer = ProductSerializer(objs, many=True)
 
         return Response({
@@ -644,3 +644,13 @@ class productvariantbyproduct(GenericAPIView):
             "response": {"n": 1, "msg": "Variant list", "status": "success"}
         })
 
+class unitlist(GenericAPIView):
+    def get(self, request):
+        objs = UnitMaster.objects.filter(isActive=True).order_by('id')
+        serializer = UnitMasterSerializer(objs, many=True)
+
+        return Response({
+            "data": serializer.data,
+            "response": {"n": 1, "msg": "Unit Master list", "status": "success"}
+        })
+    

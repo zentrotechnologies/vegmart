@@ -13,15 +13,15 @@ urlpatterns = [
     path('requirement_by_order', requirement_by_order.as_view()),
 
 
-    path('addprocurementitemmaster', addprocurementitemmaster.as_view()),
-    path('procurementitemmasterlist', procurementitemmasterlist.as_view()),
-    path('procurementitemmaster_list_pagination_api', procurementitemmaster_list_pagination_api.as_view()),
-    path('procurementitemmasterupdate', procurementitemmasterupdate.as_view()),
-    path('procurementitemmasterdelete', procurementitemmasterdelete.as_view()),
-    path('procurementitemmasterbyid', procurementitemmasterbyid.as_view()),
+    path('addrawproductmaster', addrawproductmaster.as_view()),
+    path('rawproductmasterlist', rawproductmasterlist.as_view()),
+    path('rawproductmaster_list_pagination_api', rawproductmaster_list_pagination_api.as_view()),
+    path('rawproductmasterupdate', rawproductmasterupdate.as_view()),
+    path('rawproductmasterdelete', rawproductmasterdelete.as_view()),
+    path('rawproductmasterbyid', rawproductmasterbyid.as_view()),
 
 
-    path('addmapping', addmapping.as_view()),
+    path('createrecipe', createrecipe.as_view()),
     path('mappinglist', mappinglist.as_view()),
     path('mapping_list_pagination_api', mapping_list_pagination_api.as_view()),
     path('mappingupdate', mappingupdate.as_view()),
@@ -34,4 +34,15 @@ urlpatterns = [
     path('complete_procurement', complete_procurement.as_view()),
     path('delete_procurement', delete_procurement.as_view()),
 
+
+    path('recipe_list_pagination_api', recipe_list_pagination_api.as_view()),
+    path('activaterecipe',ActivateRecipeAPI.as_view()),
+    path('deactivaterecipe',DeactivateRecipeAPI.as_view()),
+    path('deleterecipe',DeleteRecipeAPI.as_view()),
+    path('clonerecipe',CloneRecipeAPI.as_view()),
+    
+    path('recipe_details',recipe_details.as_view()),
+    
+    path('updaterecipe',UpdateRecipe.as_view()),
+    
 ]

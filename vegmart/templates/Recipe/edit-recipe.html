@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="">
+
+    <form id="recipeForm">
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Edit Recipe</h5>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+<input type="hidden"
+       id="recipe_id"
+       value="{{recipe.id}}">
+
+                    <div class="col-md-3">
+                        <label>Recipe Code</label>
+                        <input type="text" class="form-control" id="recipe_code" placeholder="RCP0001"  value="{{recipe.recipe_code}}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label>Recipe Name</label>
+                        <input type="text" class="form-control" id="recipe_name" placeholder="Low Fat Paneer" value="{{recipe.recipe_name}}">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Product</label>
+                        <select class="form-control select2-init" id="product">
+
+                            <option value="">
+                                Select Product
+                            </option>
+
+                            {% for product in products %}
+                            <option value="{{product.id}}" {% if product.id|stringformat:"s" == recipe.product|stringformat:"s" %}  selected {% endif %}>
+                                {{product.name}}
+                            </option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Version</label>
+                        <input type="number" class="form-control" value="1" id="version" value="{{recipe.version}}">
+                    </div>
+
+                </div>
+
+                <div class="row mt-3">
+
+                    <div class="col-md-3">
+                        <label>Standard Output Qty</label>
+                        <input type="number" class="form-control" id="output_qty" value="{{recipe.standard_output_qty}}">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Unit</label>
+                        <select class="form-control" id="output_unit">
+                            {% for u in units %}
+                            <option value="{{u.id}}" {% if u.id|stringformat:"s" == recipe.output_unit|stringformat:"s" %}      selected       {% endif %}>{{u.short_name}}</option>
+                            {%endfor%}
+                        </select>
+                    </div>
+
+                    <div class="col-md-7">
+                        <label>Remarks</label>
+                        <input type="text" class="form-control" id="remarks" value="{{recipe.remarks}}">
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Inputs -->
+
+        <div class="card mb-3">
+
+            <div class="card-header d-flex justify-content-between">
+
+                <h5>Recipe Inputs</h5>
+
+                <button type="button" class="btn btn-success btn-sm" onclick="addInputRow()">
+
+                    + Add Material
+
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                <table class="table table-bordered">
+
+                    <thead>
+                        <tr>
+                            <th width="35%">Material</th>
+                            <th width="15%">Qty</th>
+                            <th width="15%">Unit</th>
+                            <th width="15%">Wastage %</th>
+                            <th width="10%">Action</th>
+                        </tr>
+                    </thead>
+
+<tbody id="inputTable">
+
+{% for item in recipe.raw_materials %}
+
+<tr>
+
+    <td>
+
+        <select class="form-control input-material">
+
+            {% for rm in raw_materials %}
+
+            <option value="{{rm.id}}"
+                {% if rm.id|stringformat:"s" == item.raw_product_id|stringformat:"s" %}
+                selected
+                {% endif %}>
+
+                {{rm.name}}
+
+            </option>
+
+            {% endfor %}
+
+        </select>
+
+    </td>
+
+    <td>
+
+        <input type="number"
+               class="form-control input-qty"
+               value="{{item.quantity}}">
+
+    </td>
+
+    <td>
+
+        <select class="form-control input-unit">
+
+            {% for u in units %}
+
+            <option value="{{u.id}}"
+                {% if u.id|stringformat:"s" == item.unit|stringformat:"s" %}
+                selected
+                {% endif %}>
+
+                {{u.short_name}}
+
+            </option>
+
+            {% endfor %}
+
+        </select>
+
+    </td>
+
+    <td>
+
+        <input type="number"
+               class="form-control input-wastage"
+               value="{{item.wastage_percent}}">
+
+    </td>
+
+    <td>
+
+        <button type="button"
+                class="btn btn-danger btn-sm"
+                onclick="$(this).closest('tr').remove()">
+
+            X
+
+        </button>
+
+    </td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Outputs -->
+
+        <!-- <div class="card mb-3">
+
+            <div class="card-header d-flex justify-content-between">
+
+                <h5>Recipe Outputs</h5>
+
+                <button type="button" class="btn btn-primary btn-sm" onclick="addOutputRow()">
+
+                    + Add Output
+
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                <table class="table table-bordered">
+
+                    <thead>
+                        <tr>
+                            <th width="40%">Output Product</th>
+                            <th width="20%">Qty</th>
+                            <th width="20%">Unit</th>
+                            <th width="10%">Primary</th>
+                            <th width="10%">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="outputTable">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div> -->
+
+        <div class="text-end">
+
+<button type="button"
+        class="btn btn-primary"
+        onclick="updateRecipe()">
+
+    Update Recipe
+
+</button>
+
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
+{% block page_js %}
+{{block.super}}
+<script>
+
+    let recipeInputs = [];
+    let recipeOutputs = [];
+
+    function addInputRow() {
+
+        let html = `
+    <tr>
+
+        <td>
+            <select class="form-control input-material">
+
+                <option value="">
+                    Select Material
+                </option>
+
+                {% for item in raw_materials %}
+                <option value="{{item.id}}">
+                    {{item.name}}
+                </option>
+                {% endfor %}
+
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control input-qty">
+        </td>
+
+        <td>
+
+
+            <select class="form-control input-unit">
+
+                <option value="">
+                    Select Unit
+                </option>
+
+                {% for u in units %}
+                <option value="{{u.id}}">
+                    {{u.short_name}}
+                </option>
+                {% endfor %}
+
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control input-wastage"
+                   value="0">
+        </td>
+
+        <td>
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="$(this).closest('tr').remove()">
+
+                X
+
+            </button>
+        </td>
+
+    </tr>
+    `;
+
+        $("#inputTable").append(html);
+
+    }
+
+    function addOutputRow() {
+
+        let html = `
+    <tr>
+
+        <td>
+            <select class="form-control output-product">
+
+                <option value="">
+                    Select Product Variant
+                </option>
+
+
+                            {% for product in products %}
+                            <option value="{{product.id}}">
+                                {{product.name}}
+                            </option>
+                            {% endfor %}
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control output-qty">
+        </td>
+
+        <td>
+            <input type="text"
+                   class="form-control output-unit">
+        </td>
+
+        <td class="text-center">
+
+            <input type="radio"
+                   name="primary_output"
+                   class="primary-output">
+
+        </td>
+
+        <td>
+
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="$(this).closest('tr').remove()">
+
+                X
+
+            </button>
+
+        </td>
+
+    </tr>
+    `;
+
+        $("#outputTable").append(html);
+
+    }
+
+function updateRecipe(){
+
+    let recipeInputs = [];
+
+    $("#inputTable tr").each(function(){
+        let material = $(this)
+    .find(".input-material")
+    .val();
+
+let qty = $(this)
+    .find(".input-qty")
+    .val();
+
+let unit = $(this)
+    .find(".input-unit")
+    .val();
+
+
+
+if(material && qty && unit){
+
+    recipeInputs.push({
+
+        procurement_item_id: material,
+
+        quantity: qty,
+
+        unit: unit,
+
+        wastage_percent:
+            $(this)
+            .find(".input-wastage")
+            .val()
+
+    });
+
+}
+
+    });
+
+    let fd = new FormData();
+
+    fd.append(
+        "csrfmiddlewaretoken",
+        "{{csrf_token}}"
+    );
+
+    fd.append(
+        "recipe_id",
+        $("#recipe_id").val()
+    );
+
+    fd.append(
+        "recipe_code",
+        $("#recipe_code").val()
+    );
+
+    fd.append(
+        "recipe_name",
+        $("#recipe_name").val()
+    );
+
+    fd.append(
+        "product_id",
+        $("#product").val()
+    );
+
+    fd.append(
+        "version",
+        $("#version").val()
+    );
+
+    fd.append(
+        "standard_output_qty",
+        $("#output_qty").val()
+    );
+
+    fd.append(
+        "output_unit",
+        $("#output_unit").val()
+    );
+
+    fd.append(
+        "remarks",
+        $("#remarks").val()
+    );
+
+    fd.append(
+        "inputs",
+        JSON.stringify(recipeInputs)
+    );
+
+    $.ajax({
+
+        url:
+        hosturl +
+        "/api/Procurement/updaterecipe",
+
+        type:"POST",
+
+        data:fd,
+
+        processData:false,
+
+        contentType:false,
+
+        success:function(res){
+
+            if(res.response.n == 1){
+
+                swal(
+                    "Success",
+                    "Recipe Updated",
+                    "success"
+                ).then(()=>{
+
+                    window.location.href =
+                    "/procurement/procurement-item-mapping-list";
+
+                });
+
+            }
+            else{
+
+                swal(
+                    "Error",
+                    res.response.msg,
+                    "error"
+                );
+
+            }
+
+        }
+
+    });
+
+}
+
+
+    $(document).ready(function () {
+
+        addInputRow();
+        // addOutputRow();
+
+    });
+
+</script>
+
+{% endblock %}

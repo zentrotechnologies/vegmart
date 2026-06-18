@@ -105,14 +105,14 @@
 
             <ul class="menu-sub">
               {% for c in menuitems %}
-                {% if c.parentId == m.id %}
-                <li class="menu-item">
-                  <a href="{{ c.menuPath }}" class="menu-link">
-                    <i class="menu-icon tf-icons {{c.menuIcon}}"></i>
-                    <div>{{ c.menuItem }}</div>
-                  </a>
-                </li>
-                {% endif %}
+              {% if c.parentId == m.id %}
+              <li class="menu-item">
+                <a href="{{ c.menuPath }}" class="menu-link">
+                  <i class="menu-icon tf-icons {{c.menuIcon}}"></i>
+                  <div>{{ c.menuItem }}</div>
+                </a>
+              </li>
+              {% endif %}
               {% endfor %}
             </ul>
           </li>
@@ -152,15 +152,20 @@
           </div>
           <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
 
-
-
             <ul class="navbar-nav flex-row align-items-center ms-auto">
 
 
               <li class="nav-item navbar-dropdown dropdown-user dropdown">
                 <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
-                  <div class="avatar avatar-online">
-                    <img src="{% static 'assets/img/avatars/1.png' %}" alt class="w-px-40 h-auto rounded-circle">
+                  <div class="d-flex">
+                    <div class="p-2">
+                        <h6 class="mb-0">{{user_name|upper}}</h6>
+                          <small class="text-muted">{{role_name}}</small>
+                    </div>
+                    <div class="avatar avatar-online">
+
+                      <img src="{% static 'assets/img/avatars/1.png' %}" alt class="w-px-40 h-auto rounded-circle">
+                    </div>
                   </div>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end mt-3 py-2">
@@ -168,6 +173,7 @@
                     <a class="dropdown-item" href="javascript:void(0);">
                       <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-2">
+
                           <div class="avatar avatar-online">
                             <img src="{% static 'assets/img/avatars/1.png' %}" alt
                               class="w-px-40 h-auto rounded-circle">

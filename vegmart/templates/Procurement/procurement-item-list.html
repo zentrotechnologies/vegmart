@@ -4,7 +4,7 @@
 <div class="card">
 
   <div class="d-flex justify-content-between">
-    <h5 class="card-header">Procurement Item Master</h5>
+    <h5 class="card-header">Raw Material Master</h5>
 
     <div>
       <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
@@ -55,8 +55,9 @@
 
                 <select id="unit" class="form-control mb-3 select2-init">
                     <option value="">Select Unit</option>
-                    <option value="ml">ml</option>
-                    <option value="gm">gm</option>
+                            {% for u in units %}
+                                <option value="{{u.id}}">{{u.short_name}}</option>
+                            {%endfor%}
                 </select>
         <label>
           <input type="checkbox" id="is_milk"> Is Milk
@@ -91,7 +92,7 @@ function loadData(page){
     fd.append('csrfmiddlewaretoken','{{csrf_token}}');
 
     $.ajax({
-        url: hosturl + "/api/Procurement/procurementitemmaster_list_pagination_api",
+        url: hosturl + "/api/Procurement/rawproductmaster_list_pagination_api",
         type: "POST",
         data: fd,
         processData:false,
@@ -106,7 +107,7 @@ function loadData(page){
                     <td>${o.item_code}</td>
                     <td>${o.name}</td>
                     <td>${o.category}</td>
-                    <td>${o.unit}</td>
+                    <td>${o.unit_name}</td>
                     <td>${o.is_milk ? 'Yes' : 'No'}</td>
                     <td>
                         <button class="btn btn-warning btn-sm" onclick="editItem(${o.id})">Edit</button>
@@ -139,7 +140,7 @@ function saveItem(){
 
     let id = $("#item_id").val();
 
-    let url = id ? "procurementitemmasterupdate" : "addprocurementitemmaster";
+    let url = id ? "rawproductmasterupdate" : "addrawproductmaster";
 
     let fd = new FormData();
     fd.append('csrfmiddlewaretoken','{{csrf_token}}');
@@ -169,23 +170,22 @@ function saveItem(){
 }
 
 function editItem(id){
-    $.post(hosturl+"/api/Procurement/procurementitemmasterbyid",
+    $.post(hosturl+"/api/Procurement/rawproductmasterbyid",
     {csrfmiddlewaretoken:'{{csrf_token}}',itemid:id},
     function(res){
         let o = res.data;
         $("#item_id").val(o.id);
         $("#item_code").val(o.item_code);
         $("#name").val(o.name);
-        $("#category").val(o.category);
-        $("#unit").val(o.unit);
+        $("#category").val(o.category).trigger("change");
+        $("#unit").val(o.unit).trigger("change");
         $("#is_milk").prop('checked', o.is_milk);
-
         $("#itemModal").modal('show');
     });
 }
 
 function deleteItem(id){
-    $.post(hosturl+"/api/Procurement/procurementitemmasterdelete",
+    $.post(hosturl+"/api/Procurement/rawproductmasterdelete",
     {csrfmiddlewaretoken:'{{csrf_token}}',itemid:id},
     function(){
         reloadPage();

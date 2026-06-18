@@ -32,11 +32,14 @@
         <option value="{{s.id}}" {% if s.id == product.sub_category %}selected{% endif %}>{{s.name}}</option>
       {% endfor %}
     </select>
+    
         </div>
         <div class="col">
                 <select id="unit" class="form-control mb-3 select2-init">
-        <option value="ml" {% if product.unit == 'ml' %}selected{% endif %}>ml</option>
-        <option value="gm" {% if product.unit == 'gm' %}selected{% endif %}>gm</option>
+
+                            {% for u in units %}
+                                <option value="{{u.id}}" {% if u.id|stringformat:"s" == product.unit|stringformat:"s" %} selected {% endif %}>{{u.short_name}}</option>
+                            {%endfor%}
     </select>
         </div>
         <div class="col">

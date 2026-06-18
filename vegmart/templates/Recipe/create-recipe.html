@@ -1,0 +1,556 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="">
+
+    <form id="recipeForm">
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Create Recipe</h5>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-3">
+                        <label>Recipe Code</label>
+                        <input type="text" class="form-control" id="recipe_code" placeholder="RCP0001">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label>Recipe Name</label>
+                        <input type="text" class="form-control" id="recipe_name" placeholder="Low Fat Paneer">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Product</label>
+                        <select class="form-control select2-init" id="product">
+
+                            <option value="">
+                                Select Product
+                            </option>
+
+                            {% for product in products %}
+                            <option value="{{product.id}}">
+                                {{product.name}}
+                            </option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Version</label>
+                        <input type="number" class="form-control" value="1" id="version">
+                    </div>
+
+                </div>
+
+                <div class="row mt-3">
+
+                    <div class="col-md-3">
+                        <label>Standard Output Qty</label>
+                        <input type="number" class="form-control" id="output_qty">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Unit</label>
+                        <select class="form-control" id="output_unit">
+                            {% for u in units %}
+                            <option value="{{u.id}}">{{u.short_name}}</option>
+                            {%endfor%}
+                        </select>
+                    </div>
+
+                    <div class="col-md-7">
+                        <label>Remarks</label>
+                        <input type="text" class="form-control" id="remarks">
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Inputs -->
+
+        <div class="card mb-3">
+
+            <div class="card-header d-flex justify-content-between">
+
+                <h5>Recipe Inputs</h5>
+
+                <button type="button" class="btn btn-success btn-sm" onclick="addInputRow()">
+
+                    + Add Material
+
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                <table class="table table-bordered">
+
+                    <thead>
+                        <tr>
+                            <th width="35%">Material</th>
+                            <th width="15%">Qty</th>
+                            <th width="15%">Unit</th>
+                            <th width="15%">Wastage %</th>
+                            <th width="10%">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="inputTable">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Outputs -->
+
+        <!-- <div class="card mb-3">
+
+            <div class="card-header d-flex justify-content-between">
+
+                <h5>Recipe Outputs</h5>
+
+                <button type="button" class="btn btn-primary btn-sm" onclick="addOutputRow()">
+
+                    + Add Output
+
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                <table class="table table-bordered">
+
+                    <thead>
+                        <tr>
+                            <th width="40%">Output Product</th>
+                            <th width="20%">Qty</th>
+                            <th width="20%">Unit</th>
+                            <th width="10%">Primary</th>
+                            <th width="10%">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="outputTable">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div> -->
+
+        <div class="text-end">
+
+            <button type="button" class="btn btn-success" onclick="saveRecipe()">
+
+                Save Recipe
+
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
+{% block page_js %}
+{{block.super}}
+<script>
+
+    let recipeInputs = [];
+    let recipeOutputs = [];
+
+    function addInputRow() {
+
+        let html = `
+    <tr>
+
+        <td>
+            <select class="form-control input-material">
+
+                <option value="">
+                    Select Material
+                </option>
+
+                {% for item in raw_materials %}
+                <option value="{{item.id}}">
+                    {{item.name}}
+                </option>
+                {% endfor %}
+
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control input-qty">
+        </td>
+
+        <td>
+
+
+            <select class="form-control input-unit">
+
+                <option value="">
+                    Select Unit
+                </option>
+
+                {% for u in units %}
+                <option value="{{u.id}}">
+                    {{u.short_name}}
+                </option>
+                {% endfor %}
+
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control input-wastage"
+                   value="0">
+        </td>
+
+        <td>
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="$(this).closest('tr').remove()">
+
+                X
+
+            </button>
+        </td>
+
+    </tr>
+    `;
+
+        $("#inputTable").append(html);
+
+    }
+
+    function addOutputRow() {
+
+        let html = `
+    <tr>
+
+        <td>
+            <select class="form-control output-product">
+
+                <option value="">
+                    Select Product Variant
+                </option>
+
+
+                            {% for product in products %}
+                            <option value="{{product.id}}">
+                                {{product.name}}
+                            </option>
+                            {% endfor %}
+            </select>
+        </td>
+
+        <td>
+            <input type="number"
+                   class="form-control output-qty">
+        </td>
+
+        <td>
+            <input type="text"
+                   class="form-control output-unit">
+        </td>
+
+        <td class="text-center">
+
+            <input type="radio"
+                   name="primary_output"
+                   class="primary-output">
+
+        </td>
+
+        <td>
+
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="$(this).closest('tr').remove()">
+
+                X
+
+            </button>
+
+        </td>
+
+    </tr>
+    `;
+
+        $("#outputTable").append(html);
+
+    }
+
+    function saveRecipe() {
+        let usedInputs = [];
+        if ($("#recipe_code").val().trim() == "") {
+            swal("Error", "Recipe code is required", "error");
+            return;
+        }
+
+        if ($("#recipe_name").val().trim() == "") {
+            swal("Error", "Recipe name is required", "error");
+            return;
+        }
+
+        if ($("#product").val() == "") {
+            swal("Error", "Please select product", "error");
+            return;
+        }
+
+        if ($("#output_qty").val() == "" || parseFloat($("#output_qty").val()) <= 0) {
+            swal("Error", "Output quantity must be greater than 0", "error");
+            return;
+        }
+        recipeInputs = [];
+        recipeOutputs = [];
+        if ($("#inputTable tr").length == 0) {
+            swal("Error", "At least one recipe input is required", "error");
+            return;
+        }
+        $("#inputTable tr").each(function () {
+            let material = $(this)
+                .find(".input-material")
+                .val();
+
+            let qty = $(this)
+                .find(".input-qty")
+                .val();
+
+            let unit = $(this)
+                .find(".input-unit")
+                .val();
+
+            if (!material) {
+                swal("Error", "Please select all raw materials", "error");
+                throw "validation";
+            }
+
+            if (!qty || parseFloat(qty) <= 0) {
+                swal("Error", "Input quantity must be greater than 0", "error");
+                throw "validation";
+            }
+
+            if (!unit) {
+                swal("Error", "Please enter input unit", "error");
+                throw "validation";
+            }
+            if (usedInputs.includes(material)) {
+                swal(
+                    "Error",
+                    "Duplicate raw material selected",
+                    "error"
+                );
+                throw "validation";
+            }
+
+            usedInputs.push(material);
+            recipeInputs.push({
+
+                procurement_item_id:
+                    $(this)
+                        .find(".input-material")
+                        .val(),
+
+                quantity:
+                    $(this)
+                        .find(".input-qty")
+                        .val(),
+
+                unit:
+                    $(this)
+                        .find(".input-unit")
+                        .val(),
+
+                wastage_percent:
+                    $(this)
+                        .find(".input-wastage")
+                        .val()
+
+            });
+
+        });
+        // if ($("#outputTable tr").length == 0) {
+        //     swal(
+        //         "Error",
+        //         "At least one output is required",
+        //         "error"
+        //     );
+        //     return;
+        // }
+        // $("#outputTable tr").each(function () {
+        //     let product = $(this)
+        //         .find(".output-product")
+        //         .val();
+
+        //     let qty = $(this)
+        //         .find(".output-qty")
+        //         .val();
+
+        //     if (!product) {
+        //         swal(
+        //             "Error",
+        //             "Please select output product",
+        //             "error"
+        //         );
+        //         throw "validation";
+        //     }
+
+        //     if (!qty || parseFloat(qty) <= 0) {
+        //         swal(
+        //             "Error",
+        //             "Output quantity must be greater than 0",
+        //             "error"
+        //         );
+        //         throw "validation";
+        //     }
+        //     recipeOutputs.push({
+
+        //         product_variant_id:
+        //             $(this)
+        //                 .find(".output-product")
+        //                 .val(),
+
+        //         quantity:
+        //             $(this)
+        //                 .find(".output-qty")
+        //                 .val(),
+
+        //         unit:
+        //             $(this)
+        //                 .find(".output-unit")
+        //                 .val(),
+
+        //         is_primary_output:
+        //             $(this)
+        //                 .find(".primary-output")
+        //                 .is(":checked")
+
+        //     });
+
+        // });
+
+        let fd = new FormData();
+
+        fd.append(
+            "csrfmiddlewaretoken",
+            "{{csrf_token}}"
+        );
+
+        fd.append(
+            "recipe_code",
+            $("#recipe_code").val()
+        );
+
+        fd.append(
+            "recipe_name",
+            $("#recipe_name").val()
+        );
+
+        fd.append(
+            "product_id",
+            $("#product").val()
+        );
+
+        fd.append(
+            "version",
+            $("#version").val()
+        );
+
+        fd.append(
+            "standard_output_qty",
+            $("#output_qty").val()
+        );
+
+        fd.append(
+            "output_unit",
+            $("#output_unit").val()
+        );
+
+        fd.append(
+            "remarks",
+            $("#remarks").val()
+        );
+
+        fd.append(
+            "inputs",
+            JSON.stringify(recipeInputs)
+        );
+
+        // fd.append(
+        //     "outputs",
+        //     JSON.stringify(recipeOutputs)
+        // );
+
+        $.ajax({
+
+            url: hosturl + "/api/Procurement/createrecipe",
+
+            type: "POST",
+
+            data: fd,
+
+            processData: false,
+
+            contentType: false,
+
+            success: function (res) {
+                debugger
+                if (res.response.n == 1) {
+
+                    swal(
+                        "Success",
+                        "Recipe Created",
+                        "success"
+                    ).then(()=>{
+                        window.location.href ="/procurement/procurement-item-mapping-list"
+
+                    });
+                    
+
+                } else {
+
+                    swal(
+                        "Error",
+                        res.response.msg,
+                        "error"
+                    );
+
+                }
+
+            }
+
+        });
+
+    }
+
+    $(document).ready(function () {
+
+        addInputRow();
+        // addOutputRow();
+
+    });
+
+</script>
+
+{% endblock %}

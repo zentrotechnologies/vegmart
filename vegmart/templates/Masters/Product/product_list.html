@@ -74,7 +74,12 @@ function loadData(page){
                 $.each(res.results,function(i,o){
                     html += `
                     <tr>
-                        <td>${o.product_name}</td>
+                        <td>
+                            <div class="d-flex">
+                                <div><img src="${o.image}" width="50"></div>
+                                <div>${o.product_name}</div>
+                            </div>
+                        </td>
                         <td>${o.pack_size} ${o.product_unit}</td>
                         <td>${o.pack_type}</td>
                         <td>${o.mrp}</td>
@@ -118,6 +123,33 @@ function loadData(page){
         }
     });
 }
+  function delete_variant(id) {
 
+    swal({
+      title: "Delete?",
+      text: "This cannot be undone",
+      icon: "warning",
+      buttons: true
+    }).then((ok) => {
+
+      if (ok) {
+        $.post(hosturl + "/api/Masters/productvariantdelete",
+          {
+            csrfmiddlewaretoken: '{{csrf_token}}',
+            variantid: id
+          },
+          function (res) {
+
+            if (res.response.n == 1) {
+              swal("Deleted", res.response.msg, "success");
+              loadData();
+            } else {
+              swal("Error", res.response.msg, "error");
+            }
+          });
+      }
+    });
+  }
+  
 </script>
 {% endblock %}

@@ -37,8 +37,9 @@
 
                 <select id="unit" class="form-control mb-3 select2-init">
                     <option value="">Select Unit</option>
-                    <option value="ml">ml</option>
-                    <option value="gm">gm</option>
+                            {% for u in units %}
+                                <option value="{{u.id}}">{{u.short_name}}</option>
+                            {%endfor%}
                 </select>
             </div>
 
