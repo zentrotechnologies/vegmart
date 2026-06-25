@@ -40,9 +40,8 @@ urlpatterns = [
     path('deactivaterecipe',DeactivateRecipeAPI.as_view()),
     path('deleterecipe',DeleteRecipeAPI.as_view()),
     path('clonerecipe',CloneRecipeAPI.as_view()),
-    
     path('recipe_details',recipe_details.as_view()),
-    
     path('updaterecipe',UpdateRecipe.as_view()),
-    
+    path('get_product_recipe_list',get_product_recipe_list.as_view()),
+
 ]

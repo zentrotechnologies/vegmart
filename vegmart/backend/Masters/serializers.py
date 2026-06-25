@@ -40,7 +40,26 @@ class ProductSerializer(serializers.ModelSerializer):
         model= Product
         fields='__all__'
 
+class CustomProductSerializer(serializers.ModelSerializer):
+    unit_name = serializers.SerializerMethodField()
+    def get_unit_name(self, obj):
+        obj_id = obj.unit
+        if obj_id is not None and obj_id !='' and obj_id !='None':
+            try:
 
+                unit_obj=UnitMaster.objects.filter(id=obj_id).first()
+                if unit_obj is not None:
+                    return unit_obj.short_name
+                else:
+                    return None
+            except UnitMaster.DoesNotExist:
+                return None
+        return None
+
+
+    class Meta:
+        model= Product
+        fields='__all__'
 class ProductVariantSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -69,7 +88,6 @@ class CustomProductVariantSerializer(serializers.ModelSerializer):
     product_unit = serializers.SerializerMethodField()
     def get_product_unit(self, obj):
         obj_id = obj.product
-        
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
                 obj = Product.objects.filter(id=obj_id).first()

@@ -20,6 +20,8 @@ class Inventory(TrackingModel):
             ('finished', 'Finished Goods'),
             ('packaging', 'Packaging'),
         ]
+    
+    
     warehouse = models.CharField(max_length=100)
     quantity = models.FloatField()
     batch = models.CharField(max_length=100)
@@ -28,7 +30,8 @@ class Inventory(TrackingModel):
         choices=INVENTORY_TYPE_CHOICES,
         default='finished'
     )
-    product_variant = models.CharField(max_length=100)
+    stock_id = models.CharField(max_length=100)
+    unit = models.CharField(max_length=100) #base unit ml/gm
 
 
 

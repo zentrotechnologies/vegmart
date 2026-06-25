@@ -78,6 +78,7 @@ def view_recipe(request, id):
         recipe_url = hosturl + f'/api/Procurement/recipe_details?recipe_id={id}'
         recipe_res = requests.get(recipe_url, headers=headers)
         recipe = recipe_res.json().get('data',{})
+        
         return render(
             request,
             'Recipe/view-recipe.html',

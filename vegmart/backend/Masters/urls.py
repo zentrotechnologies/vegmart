@@ -35,6 +35,7 @@ urlpatterns = [
     path('addproductvariant', addproductvariant.as_view()),
     path('productvariantlist', productvariantlist.as_view()),
     path('getprocurementexpectedproductvariantlist', getprocurementexpectedproductvariantlist.as_view()),
+    path('getprocurementexpectedrawproductlist', getprocurementexpectedrawproductlist.as_view()),
 
     path('productvariant_list_pagination_api', productvariant_list_pagination_api.as_view()),
     path('productvariantupdate', productvariantupdate.as_view()),

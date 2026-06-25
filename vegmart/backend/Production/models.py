@@ -1,6 +1,7 @@
 from django.db import models
 from helpers.models import TrackingModel
 # Create your models here.
+
 class ProcessingBatch(TrackingModel):
     batch_number = models.CharField(max_length=100, unique=True)
     input_quantity = models.FloatField()  # milk liters

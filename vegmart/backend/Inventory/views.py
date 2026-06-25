@@ -224,7 +224,9 @@ class inventory_list_pagination_api(GenericAPIView):
     def post(self, request):
 
         objs = Inventory.objects.filter(isActive=True,quantity__gte=1).order_by('-id')
-
+        inventory_type=request.data.get('inventory_type')
+        if inventory_type is not None:
+            objs=objs.filter(inventory_type=inventory_type)
         search = request.data.get('search')
 
         if search:

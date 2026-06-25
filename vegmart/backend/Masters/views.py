@@ -325,7 +325,7 @@ class procurementreadyproductlist(GenericAPIView):
         product_ids=list(ProductVariant.objects.filter(isActive=True).order_by('product').distinct('product').values_list('product',flat=True))
         
         objs = Product.objects.filter(id__in=product_ids,isActive=True).order_by('id')
-        serializer = ProductSerializer(objs, many=True)
+        serializer = CustomProductSerializer(objs, many=True)
 
         return Response({
             "data": serializer.data,
@@ -531,13 +531,9 @@ class getprocurementexpectedproductvariantlist(GenericAPIView):
             "response": {"n": 0, "msg": "procurement obj not found", "status": "error"}
         })
         procurement_products_base_query=ProcurementProducts.objects.filter(procurement=procurement_obj.id).order_by('product_id').distinct('product_id')
-
-
         procurement_product_ids=list(procurement_products_base_query.values_list('product_id',flat=True))
-
-
         procurement_products_serializer=CustomProcurementProductsSerializer(procurement_products_base_query,many=True)
-        # print("procurement_products_serializer",procurement_products_serializer.data)
+       
 
         objs = ProductVariant.objects.filter(isActive=True,product__in=procurement_product_ids).order_by('id')
         if objs.exists():
@@ -551,6 +547,43 @@ class getprocurementexpectedproductvariantlist(GenericAPIView):
             "data": [],
             "response": {"n": 0, "msg": "procurement variants not found", "status": "error"}
         })
+
+
+class getprocurementexpectedrawproductlist(GenericAPIView):
+    def post(self, request):
+        procurement_id=request.data.get('procurement_id')
+        if procurement_id is None or procurement_id =='':
+            return Response({
+            "data": [],
+            "response": {"n": 0, "msg": "please provide procurement id", "status": "error"}
+        })
+        procurement_obj=ProcurementEntry.objects.filter(id=procurement_id,isActive=True).first()
+        if procurement_obj is None:
+            return Response({
+            "data": [],
+            "response": {"n": 0, "msg": "procurement obj not found", "status": "error"}
+        })
+
+
+        objs = ProcurementRawmaterial.objects.filter(isActive=True,procurement=procurement_id).order_by('id')
+        if objs.exists():
+            serializer = CustomProcurementRawmaterialSerializer(objs, many=True)
+            return Response({
+                "data": {"raw_materials":serializer.data,},
+                "response": {"n": 1, "msg": "Variant list", "status": "success"}
+            })
+        else:
+            return Response({
+            "data": [],
+            "response": {"n": 0, "msg": "procurement variants not found", "status": "error"}
+        })
+
+
+
+
+
+
+
 
 class productvariant_list_pagination_api(GenericAPIView):
     pagination_class = CustomPagination

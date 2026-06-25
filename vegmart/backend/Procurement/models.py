@@ -40,7 +40,6 @@ class RecipeMaster(TrackingModel): #Recipe
     class Meta:
         unique_together = ('recipe_code', 'version')
 
-
 class RecipeRawmaterial(TrackingModel):
     recipe_id = models.CharField(max_length=20)
     raw_product_id = models.CharField(max_length=20)
@@ -82,6 +81,9 @@ class ProcurementRawmaterial(TrackingModel):
     rate = models.FloatField(default=0)
     total = models.FloatField(default=0)
 
+
+
+
 class ProcurementOutput(TrackingModel):
     recipe_id = models.CharField(max_length=20)
     procurement = models.CharField(max_length=20)
@@ -91,4 +93,9 @@ class ProcurementOutput(TrackingModel):
     is_primary_output = models.BooleanField(default=True)
 
 
+class ProcurementProducts(TrackingModel):
+    procurement = models.CharField(max_length=20)
+    product_id = models.CharField(max_length=20)
+    quantity = models.FloatField()
+    unit = models.CharField(max_length=20)
 

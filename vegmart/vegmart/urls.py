@@ -42,6 +42,7 @@ urlpatterns = [
     path('masters/',include(('Frontend_Masters.urls', 'Frontend_Masters'),namespace='Frontend_Masters')),
     path('orders/',include(('Frontend_Orders.urls', 'Frontend_Orders'),namespace='Frontend_Orders')),
     path('procurement/',include(('Frontend_Procurement.urls', 'Frontend_Procurement'),namespace='Frontend_Procurement')),
+    path('production/',include(('Frontend_Production.urls', 'Frontend_Production'),namespace='Frontend_Production')),
     path('report/',include(('Frontend_Reports.urls', 'Frontend_Reports'),namespace='Frontend_Reports')),
     path('',include(('Frontend_User.urls', 'Frontend_User'),namespace='Frontend_User')),
 

@@ -19,7 +19,7 @@ import json, datetime
 from django.db.models import Sum,Q
 from Orders.models import *
 from django.db import transaction
-
+from decimal import Decimal
 
 class addprocuremententry(GenericAPIView):
     def post(self, request):
@@ -69,7 +69,7 @@ class addprocuremententry(GenericAPIView):
 
         # 🔥 INVENTORY UPDATE (IMPORTANT)
         inv, created = Inventory.objects.get_or_create(
-            product_variant=item_id,
+            stock_id=item_id,
             warehouse="default"
         )
         inv.quantity += quantity
@@ -79,6 +79,7 @@ class addprocuremententry(GenericAPIView):
             "data": {"entry_id": entry.id},
             "response": {"n": 1, "msg": "Procurement entry added", "status": "success"}
         })
+
 class procurementlist(GenericAPIView):
     def get(self, request):
         objs = ProcurementEntry.objects.filter(isActive=True).order_by('-id')
@@ -174,14 +175,16 @@ class requirement_by_order(GenericAPIView):
         raw_products = RawProductMaster.objects.filter(
             isActive=True
         )
+        units = UnitMaster.objects.filter(
+            isActive=True
+        )
 
         for item in order_items:
-            print("item",item.product_variant)
             ordered_qty = float(item.quantity or 0)
 
             stock = (
                 Inventory.objects.filter(
-                    product_variant=item.product_variant
+                    stock_id=item.product_variant
                 ).aggregate(
                     total=Sum("quantity")
                 )["total"] or 0
@@ -200,6 +203,7 @@ class requirement_by_order(GenericAPIView):
             product_id = ""
             pack_size = 1
             product_unit = ""
+            product_unit_name = ""
 
             if variant:
 
@@ -216,6 +220,11 @@ class requirement_by_order(GenericAPIView):
                 if product_obj:
                     product_name = product_obj.name
                     product_unit = product_obj.unit
+                    
+                    if product_obj.unit is not None and product_obj.unit !='':
+                        unit_obj=UnitMaster.objects.filter(id=product_obj.unit,isActive=True).first()
+                        if unit_obj is not None:
+                            product_unit_name = unit_obj.short_name
 
             if required_product_qty <= 0:
 
@@ -228,6 +237,8 @@ class requirement_by_order(GenericAPIView):
                     "required_qty": 0,
                     "mapping_exist": False,
                     "product_unit": product_unit,
+                    "product_unit_name": product_unit_name,
+                    
                     "pack_size": pack_size,
                 })
 
@@ -263,6 +274,7 @@ class requirement_by_order(GenericAPIView):
                 "required_qty": required_product_qty,
                 "mapping_exist": mapping_exist,
                 "product_unit": product_unit,
+                "product_unit_name": product_unit_name,
                 "pack_size": pack_size,
             })
 
@@ -278,22 +290,25 @@ class requirement_by_order(GenericAPIView):
             )
 
             for raw in mappings:
-
+                print("raw",raw)
                 recipe_qty = float(
                     raw.quantity or 0
                 )
+                # print("recipe_qty",recipe_qty)
+                # required_raw_qty = (
+                #     recipe_qty / output_qty
+                # ) * production_qty
+                # print("required_raw_qty",required_raw_qty)
+                # wastage = float(
+                #     raw.wastage_percent or 0
+                # )
 
-                required_raw_qty = (
-                    recipe_qty / output_qty
-                ) * production_qty
-
-                wastage = float(
-                    raw.wastage_percent or 0
-                )
-
-                required_raw_qty += (
-                    required_raw_qty * wastage / 100
-                )
+                # required_raw_qty += (
+                #     required_raw_qty * wastage / 100
+                # )
+                
+                
+                required_raw_qty = recipe_qty
 
                 item_id = str(raw.raw_product_id)
 
@@ -309,7 +324,13 @@ class requirement_by_order(GenericAPIView):
             raw_item = raw_products.filter(
                 id=item_id
             ).first()
-
+            unit_id=raw_item.unit if raw_item else ""
+            unit_name=''
+            if unit_id is not None:
+                unit_nobj=units.filter(id=unit_id).first()
+                if unit_nobj is not None:
+                    unit_name=unit_nobj.short_name
+                
             procurement_data.append({
 
                 "procurement_item": item_id,
@@ -319,6 +340,8 @@ class requirement_by_order(GenericAPIView):
 
                 "unit":
                     raw_item.unit if raw_item else "",
+                    
+                "unit_name":unit_name,
 
                 "required_qty":
                     round(qty, 2)
@@ -755,14 +778,18 @@ class get_mapping_by_product(GenericAPIView):
 
         objs = RecipeMaster.objects.filter(
             product=product,
-            isActive=True
-        )
-        print("objs",objs.count())
-        if objs.exists():
-            serializer = CustomRecipeMasterSerializer(objs, many=True)
+            isActive=True,status="active"
+        ).first()
 
+        if objs:
+            serializer = CustomRecipeMasterSerializer(objs)
+            raw_products_objs=RecipeRawmaterial.objects.filter(recipe_id=serializer.data['id'],isActive=True)
+            raw_products_serializer=CustomRecipeRawmaterialSerializer(raw_products_objs,many=True)
+            data=serializer.data
+            data['raw_products']=raw_products_serializer.data
+            
             return Response({
-                "data": serializer.data,
+                "data": data,
                 "response": {"n": 1, "msg": "Procurement items mapped to this product", "status": "success"}
             })
         else:
@@ -807,7 +834,7 @@ class create_procurement(GenericAPIView):
                     return Response({"response": {"n": 0, "msg": "order not found"}})
             items = request.data.get("items", [])
 
-            # 🔒 basic validation
+          
             if not supplier_id:
                 return Response({"response": {"n": 0, "msg": "Please select supplier"}})
             if not products:
@@ -822,15 +849,18 @@ class create_procurement(GenericAPIView):
                 order_id=order_id,
                 paid_amount=paid_amount
             )
-
+            
             # ================= PRODUCTS =================
             for p in products:
-
                 ProcurementProducts.objects.create(
                     procurement=str(entry.id),
                     product_id=p.get("product_id"),
-                    quantity=p.get("quantity")
+                    quantity=p.get("quantity"),
+                    unit=p.get("unit"),
+                    
                 )
+                
+                
             total_amount = 0
 
             # ================= CREATE ITEMS =================
@@ -848,9 +878,9 @@ class create_procurement(GenericAPIView):
 
                 item_total = qty * rate
 
-                ProcurementItem.objects.create(
+                ProcurementRawmaterial.objects.create(
                     procurement=str(entry.id),
-                    procurement_item_id=item_id,
+                    raw_material_id=item_id,
                     quantity=qty,
                     unit=unit,
                     fat=fat,
@@ -911,8 +941,8 @@ class procurement_details(GenericAPIView):
                 "response": {"n": 0, "msg": "Invalid procurement", "status": "error"}
             })
 
-        items = ProcurementItem.objects.filter(procurement=str(pid))
-        items_serializer=CustomProcurementItemSerializer(items,many=True)
+        items = ProcurementRawmaterial.objects.filter(procurement=str(pid))
+        items_serializer=CustomProcurementRawmaterialSerializer(items,many=True)
 
         products = ProcurementProducts.objects.filter(procurement=str(pid))
         products_serializer=CustomProcurementProductsSerializer(products,many=True)
@@ -933,7 +963,31 @@ class procurement_details(GenericAPIView):
         })
     
 
+def convert_to_base_unit(quantity, unit_id):
+    """
+    Converts a quantity to its base unit.
 
+    Examples:
+        35 LTR -> 35000 ML
+        25 KG  -> 25000 GM
+        2 MT   -> 2000000 GM
+        500 ML -> 500 ML
+    """
+
+    unit = UnitMaster.objects.get(id=unit_id)
+    qty = Decimal(str(quantity))
+
+    while unit.parent_unit:
+        qty *= Decimal(str(unit.conversion_factor))
+        unit = unit.parent_unit
+
+    return {
+        "quantity": float(qty),   # or return Decimal if your model uses DecimalField
+        "unit_id": unit.id
+    }
+    
+    
+    
 class complete_procurement(GenericAPIView):
     @transaction.atomic
     def post(self, request):
@@ -954,18 +1008,33 @@ class complete_procurement(GenericAPIView):
         if not outputs:
             return Response({"response":{"n":0,"msg":"No outputs provided","status":"error"}})
 
+        
+        
         today_str = datetime.date.today()
-        batch = f"BH-{today_str}-{str(pid).zfill(4)}"
+        batch = f"BH-RAW-{today_str}-{str(pid).zfill(4)}"
         # ================= SAVE OUTPUT =================
         for o in outputs:
-
-            ProcurementOutput.objects.create(
-                procurement=str(pid),
-                product_variant_id=o.get("product_variant_id"),
-                quantity=o.get("quantity")
+            result = convert_to_base_unit(
+                quantity=o.get("quantity"),
+                unit_id=o.get("unit")
             )
-            qty = float(o.get("quantity", 0))
-            if qty <= 0:
+            # print("result",result,o.get("quantity"))
+            # return Response({"response":{"n":0,"msg":"No outputs provided","status":"error"}})
+            inventory_qty = result["quantity"]
+            inventory_unit = result["unit_id"]
+
+            # Inventory.objects.create(
+            #     warehouse="MAIN",
+            #     stock_id=o.get("raw_product_id"),
+            #     quantity=inventory_qty,
+            #     unit=inventory_unit,
+            #     inventory_type="raw",
+            #     batch=batch
+            # )
+            
+            
+            
+            if inventory_qty <= 0:
                 return Response({"response":{"n":0,"msg":"Invalid quantity","status":"error"}})
 
 
@@ -974,21 +1043,30 @@ class complete_procurement(GenericAPIView):
             # create batch no dynamicaly "BH"+Date+"-"+entry.id
 
             inv = Inventory.objects.filter(
-                product_variant=o.get("product_variant_id"),inventory_type='finished',batch=batch
+                stock_id=o.get("raw_product_id"),inventory_type='raw',batch=batch
             ).first()
 
             if inv:
-                inv.quantity += float(o.get("quantity"))
+                inv.quantity += inventory_qty
                 inv.save()
             else:
                 Inventory.objects.create(
                     warehouse="MAIN",
-                    product_variant=o.get("product_variant_id"),
-                    quantity=o.get("quantity"),inventory_type='finished',batch=batch
+                    stock_id=o.get("raw_product_id"),
+                    quantity=inventory_qty,inventory_type='raw',batch=batch,unit=inventory_unit,
                 )
 
+
+        if entry.order_id is not None and entry.order_id !='':
+            order_obj=Order.objects.filter(id=entry.order_id).first()
+            if order_obj is not None:
+                order_obj.status="production-ready"
+                order_obj.save()
+                
+                
         entry.status = "completed"
         entry.save()
+        
 
         return Response({
             "data": {},
@@ -1021,7 +1099,7 @@ class delete_procurement(GenericAPIView):
                 "response": {"n": 0, "msg": "Cannot delete completed procurement", "status": "error"}
             })
 
-        ProcurementItem.objects.filter(procurement=str(pid)).update(isActive=False)
+        ProcurementRawmaterial.objects.filter(procurement=str(pid)).update(isActive=False)
         entry.isActive=False
         entry.save()
 
@@ -1284,7 +1362,7 @@ class recipe_details(GenericAPIView):
 
                 if unit:
                     unit_name = unit.short_name
-
+                print("raw.quantity",raw.quantity)
                 raw_material_list.append({
                     "id": raw.id,
                     "raw_product_id": raw.raw_product_id,
@@ -1367,4 +1445,52 @@ class UpdateRecipe(GenericAPIView):
                 "status":"success"
             }
         })
+            
+            
+class get_product_recipe_list(GenericAPIView):
+
+    def post(self, request):
+
+
+
+        product=request.data.get('product')
+        if product is None or product=='':
+            return Response({
+                "data":[],
+                "response":{
+                    "n":0,
+                    "msg":"Please provide product Id",
+                    "status":"error"
+                }
+            })
+        objs = RecipeMaster.objects.filter(
+            isActive=True,status='active',product=product
+        ).order_by('version')
+        
+        
+        serializer = CustomRecipeMasterSerializer(
+            objs,
+            many=True
+        )
+
+        return Response({
+            "data":serializer.data,
+            "response":{
+                "n":1,
+                "msg":"Recipe found successfully",
+                "status":"success"
+            }
+        })
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             

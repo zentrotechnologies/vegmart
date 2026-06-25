@@ -12,11 +12,11 @@
 <div class="card">
 
   <div class="d-flex justify-content-between p-2">
-    <h5>Procurement</h5>
+    <h5>Production</h5>
 
     <div class="d-flex gap-2">
       <input type="text" id="search" class="form-control" placeholder="Search">
-      <button class="btn btn-primary" onclick="openEntry()">+ Add Procurement</button>
+      <button class="btn btn-primary" onclick="openEntry()">+ Add Production</button>
     </div>
 
   </div>
@@ -49,7 +49,7 @@
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5>Add Procurement</h5>
+        <h5>Add Production</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
@@ -89,7 +89,7 @@
             </div>
           </div>
 
-          <button class="btn btn-info mt-2" onclick="generateProcurement()">Generate Items</button>
+          <button class="btn btn-info mt-2" onclick="generateProduction()">Generate Items</button>
 
           <div class="mt-3" style="max-height:300px;overflow:auto;">
             <table class="table table-sm">
@@ -102,7 +102,7 @@
                   <th>Total</th>
                 </tr>
               </thead>
-              <tbody id="procurement_body_manual"></tbody>
+              <tbody id="production_body_manual"></tbody>
             </table>
           </div>
 
@@ -131,7 +131,7 @@
               <tbody id="product_table"></tbody>
             </table>
 
-            <h6>Total Procurement Items</h6>
+            <h6>Total Production Items</h6>
             <table class="table table-sm">
               <thead>
                 <tr>
@@ -142,7 +142,7 @@
                   <th>Total</th>
                 </tr>
               </thead>
-              <tbody id="procurement_body"></tbody>
+              <tbody id="production_body"></tbody>
             </table>
 
           </div>
@@ -199,7 +199,7 @@
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5>Complete Procurement</h5>
+        <h5>Complete Production</h5>
       </div>
 
       <div class="modal-body">
@@ -238,7 +238,7 @@
   // ================= INIT =================
   $(document).ready(() => {
     loadData();
-    loadDropdowns();
+    // loadDropdowns();
   });
 
   // ================= MODE =================
@@ -261,7 +261,7 @@
     fd.append("csrfmiddlewaretoken", "{{csrf_token}}");
 
     $.ajax({
-      url: hosturl + "/api/Procurement/procurement_list_pagination_api",
+      url: hosturl + "/api/Production/production_list_pagination_api",
       type: "POST",
       data: fd,
       processData: false,
@@ -276,7 +276,7 @@
                 <tr>
                     <td>${o.supplier_name}</td>
                     <td>${o.product_names}</td>
-                    <td>${o.order_id ? 'ORDER-' + o.order_id : 'Manual Procurement'}</td>
+                    <td>${o.order_id ? 'ORDER-' + o.order_id : 'Manual Production'}</td>
                     <td>${o.total_amount}</td>
                     <td>${o.paid_amount}</td>
                     <td>${o.credit_amount}</td>
@@ -285,8 +285,8 @@
                         <button class="btn btn-info btn-sm" onclick="viewDetails(${o.id})">View</button>
                         ${o.status == "completed" ? `
                         `: `
-                        <button class="btn btn-success btn-sm" onclick="completeProcurement(${o.id})">Complete</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteProcurement(${o.id})">Delete</button>`}
+                        <button class="btn btn-success btn-sm" onclick="completeProduction(${o.id})">Complete</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduction(${o.id})">Delete</button>`}
                         
                     </td>
                 </tr>`;
@@ -315,7 +315,7 @@
     });
   }
   // ================= GENERATE =================
-  function generateProcurement() {
+  function generateProduction() {
 
     let product = $("#product").val();
     let recipe = $("#recipe").val();
@@ -333,7 +333,7 @@
       swal("Error", "Enter valid  qty", "error");
       return;
     }
-    $.post(hosturl + "/api/Procurement/get_mapping_by_product",
+    $.post(hosturl + "/api/Production/get_mapping_by_product",
       { csrfmiddlewaretoken: '{{csrf_token}}', product: product, quantity: qty },
       function (res) {
         if (res.response.n == 1) {
@@ -350,21 +350,20 @@
             </tr>`;
           });
 
-          $("#procurement_body_manual").html(html);
+          $("#production_body_manual").html(html);
         } else {
           swal("Error", res.response.msg, "error");
-          $("#procurement_body_manual").html('');
+          $("#production_body_manual").html('');
         }
       });
   }
-
 
   // ================= CALC =================
   $(document).on("keyup", ".qty,.rate,#paid", function () {
 
     let grand = 0;
 
-    $("#procurement_body_manual tr, #procurement_body tr").each(function () {
+    $("#production_body_manual tr, #production_body tr").each(function () {
 
       let q = parseFloat($(this).find(".qty").val()) || 0;
       let r = parseFloat($(this).find(".rate").val()) || 0;
@@ -386,7 +385,7 @@
 
     let items = [];
 
-    $("#procurement_body_manual tr, #procurement_body tr").each(function () {
+    $("#production_body_manual tr, #production_body tr").each(function () {
 
       let q = parseFloat($(this).find(".qty").val()) || 0;
       let r = parseFloat($(this).find(".rate").val()) || 0;
@@ -429,7 +428,7 @@
 
 
     $.ajax({
-      url: hosturl + "/api/Procurement/create_procurement",
+      url: hosturl + "/api/Production/create_production",
       type: "POST",
       contentType: "application/json",
       data: JSON.stringify({
@@ -459,11 +458,9 @@
       : '<span class="badge bg-warning">Processing</span>';
   }
 
-  // ================= OPEN =================
-
   function fetchRequirement() {
 
-    $.post(hosturl + "/api/Procurement/requirement_by_order",
+    $.post(hosturl + "/api/Production/requirement_by_order",
       {
         csrfmiddlewaretoken: '{{csrf_token}}',
         order_id: $("#order_id").val()
@@ -476,7 +473,7 @@
         }
 
         let product_html = "";
-        let procurement_html = "";
+        let production_html = "";
 
         // PRODUCTS TABLE
         res.data.products.forEach(p => {
@@ -506,13 +503,13 @@
         $("#product_table").html(product_html);
 
         // PROCUREMENT ITEMS
-        res.data.procurement_items.forEach(o => {
-          procurement_html += `
+        res.data.production_items.forEach(o => {
+          production_html += `
             <tr>
-                <td>${o.procurement_item_name}</td>
+                <td>${o.production_item_name}</td>
                 <td>
                     <input type="number" value="${o.required_qty}" 
-                        class="form-control qty" data-item="${o.procurement_item}">
+                        class="form-control qty" data-item="${o.production_item}">
                 </td>
                 <td class="unit" data-unit="${o.unit}">${o.unit_name}</td>
                 <td><input value="0" class="form-control rate"></td>
@@ -520,12 +517,13 @@
             </tr>`;
         });
 
-        $("#procurement_body").html(procurement_html);
+        $("#production_body").html(production_html);
       });
   }
+  
   function viewDetails(id) {
 
-    $.post(hosturl + "/api/Procurement/procurement_details",
+    $.post(hosturl + "/api/Production/production_details",
       {
         csrfmiddlewaretoken: '{{csrf_token}}',
         id: id
@@ -542,9 +540,9 @@
         res.data.items.forEach(o => {
           html += `
             <tr>
-                <td>${o.procurement_item_name}</td>
+                <td>${o.production_item_name}</td>
                 <td>${o.quantity}</td>
-                <td>${o.procurement_item_unit_name}</td>
+                <td>${o.production_item_unit_name}</td>
                 <td>${o.rate}</td>
                 <td>${o.total}</td>
             </tr>`;
@@ -555,14 +553,13 @@
       });
   }
 
+  function completeProduction(id) {
 
-  function completeProcurement(id) {
+    window.currentProduction = id;
 
-    window.currentProcurement = id;
-
-    $.post(hosturl + "/api/Masters/getprocurementexpectedrawproductlist", {
+    $.post(hosturl + "/api/Masters/getproductionexpectedrawproductlist", {
       csrfmiddlewaretoken: '{{csrf_token}}',
-      procurement_id: id
+      production_id: id
     }, function (res) {
       if (res.response.n == 1) {
 
@@ -572,7 +569,7 @@
         res.data.raw_materials.forEach(v => {
           html += `
             <tr>
-                <td>${v.procurement_item_name} (${v.procurement_item_unit_name})</td>
+                <td>${v.production_item_name} (${v.production_item_unit_name})</td>
                 <td>
                     <input type="number" 
                         class="form-control raw_product_qty"
@@ -587,6 +584,7 @@
       }
     });
   }
+  
   function confirmComplete() {
 
     let outputs = [];
@@ -612,11 +610,11 @@
     }
 
     $.ajax({
-      url: hosturl + "/api/Procurement/complete_procurement",
+      url: hosturl + "/api/Production/complete_production",
       type: "POST",
       contentType: "application/json",
       data: JSON.stringify({
-        id: currentProcurement,
+        id: currentProduction,
         outputs: outputs
       }),
       success: function (res) {
@@ -632,7 +630,7 @@
     });
   }
 
-  function deleteProcurement(id) {
+  function deleteProduction(id) {
 
     swal({
       title: "Delete?",
@@ -642,7 +640,7 @@
     }).then((ok) => {
 
       if (ok) {
-        $.post(hosturl + "/api/Procurement/delete_procurement",
+        $.post(hosturl + "/api/Production/delete_production",
           {
             csrfmiddlewaretoken: '{{csrf_token}}',
             id: id
@@ -659,6 +657,7 @@
       }
     });
   }
+  
   function loadDropdowns() {
 
     $.get(hosturl + "/api/Partners/vendorlist", function (res) {
@@ -669,7 +668,7 @@
       $("#supplier").html(html);
     });
 
-    $.get(hosturl + "/api/Masters/procurementreadyproductlist", function (res) {
+    $.get(hosturl + "/api/Masters/productionreadyproductlist", function (res) {
       let html = '<option value="">Select Product</option>';
       res.data.forEach(o => {
         html += `<option value="${o.id}">${o.name}</option>`;
@@ -684,7 +683,7 @@
   function getRecipelist() {
     let product = $("#product").val();
 
-    $.post(hosturl + "/api/Procurement/get_product_recipe_list",
+    $.post(hosturl + "/api/Production/get_product_recipe_list",
       { csrfmiddlewaretoken: '{{csrf_token}}', product: product },
       function (res) {
 
@@ -707,6 +706,7 @@
       });
 
   }
+  
   function update_required_qty() {
 
     let option = $("#recipe option:selected");
@@ -721,12 +721,13 @@
 
     $("#required_qty").val(`${qty}`);
   }
+  
   function openEntry() {
 
     $("#entryModal").modal('show');
 
-    $("#procurement_body_manual").html("");
-    $("#procurement_body").html("");
+    $("#production_body_manual").html("");
+    $("#production_body").html("");
     $("#product_table").html("");
 
     $("#required_qty").val("");

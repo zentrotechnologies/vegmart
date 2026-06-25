@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'Frontend_Masters',
     'Frontend_Orders',
     'Frontend_Procurement',
+    'Frontend_Production',
     'Frontend_Reports',
     'Frontend_User',
 

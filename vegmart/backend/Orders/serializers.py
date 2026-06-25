@@ -87,6 +87,29 @@ class CustomOrderItemSerializer(serializers.ModelSerializer):
                 return None
         return None
     
+    
+    product_unit_name = serializers.SerializerMethodField()
+    def get_product_unit_name(self, obj):
+        obj_id = obj.product
+        
+        if obj_id is not None and obj_id !='' and obj_id !='None':
+            try:
+                obj = Product.objects.filter(id=obj_id).first()
+                if obj is not None:
+                    unit_obj=UnitMaster.objects.filter(id=obj.unit).first()
+                    if unit_obj is not None:
+                        
+                        return unit_obj.short_name
+                    else:
+                        return None
+               
+                else:
+                    return None
+            except Product.DoesNotExist:
+                return None
+        return None
+    
+    
     product_hsn_code = serializers.SerializerMethodField()
     def get_product_hsn_code(self, obj):
         obj_id = obj.product
@@ -105,18 +128,20 @@ class CustomOrderItemSerializer(serializers.ModelSerializer):
     pack_size = serializers.SerializerMethodField()
     def get_pack_size(self, obj):
         obj_id = obj.product_variant
-        
+        print("obj_id",obj_id)
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
                 obj = ProductVariant.objects.filter(id=obj_id).first()
+                print("obj",obj)
                 if obj is not None:
-                   return obj.pack_size
+                    print("obj.pack_size",obj.pack_size)
+                    return obj.pack_size
                 else:
                     return None
             except ProductVariant.DoesNotExist:
                 return None
         return None
-
+    
 
     class Meta:
         model= OrderItem

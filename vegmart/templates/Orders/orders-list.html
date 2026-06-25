@@ -8,7 +8,9 @@
 
         <div class="align-content-center">
             <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
-            <a class="btn btn-primary mx-2" href="/orders/place-order">Place Order</a>
+            {% if role_id == 5 %}
+                <a class="btn btn-primary mx-2" href="/orders/place-order">Place Order</a>
+            {%endif%}
         </div>
     </div>
 
@@ -195,24 +197,29 @@
          `: ``}
 
         ${`{{role_id}}` == 2 ||`{{role_id}}` == 1  ? `
-
         ${o.status == 'dispatched' ? `
             <button class="btn btn-primary btn-sm" onclick="deliverOrder(${o.id})" title="Delivered Order">Deliver</button>
          `: ``}
          `: ``}
 
-
-        ${o.credit_amount > 0 ? `
-            <button class="btn btn-warning btn-sm" onclick="openPayment(${o.id})" title="Make Payment">₹</button>
+        ${`{{role_id}}` == 5 ||`{{role_id}}` == 1  ? `
+            ${o.credit_amount > 0 ? `
+                <button class="btn btn-warning btn-sm" onclick="openPayment(${o.id})" title="Make Payment">₹</button>
+            `: ``}
          `: ``}
 
         ${`{{role_id}}` == 3 ||`{{role_id}}` == 1  ? `
          
             ${o.status != 'delivered' && o.status != 'cancelled' && o.status == 'confirmed'? `
-                <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">  Procure</button>
+                <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">Procure</button>
             `: ``}
          `: ``}
+        ${`{{role_id}}` == 4 ||`{{role_id}}` == 1  ? `
          
+            ${o.status == 'production-ready'? `
+                <button class="btn btn-info btn-sm" onclick="getProductionSummary(${o.id})" title="Check Production Summary">Start Production</button>
+            `: ``}
+         `: ``}
 
 
 
@@ -268,24 +275,21 @@
                     let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
                     if (p.mapping_exist) {
                         html += `
-            <tr>
-                <td class="product" data-product="${p.product_id}">${p.product_name} ${p.pack_size} ${p.product_unit}</td>
-                <td>${p.ordered_qty}</td>
-                <td>${p.available_stock}</td>
-                <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
-            </tr>`;
+                            <tr>
+                                <td class="product" data-product="${p.product_id}" data-unit="${p.product_unit}">${p.product_name} ${p.pack_size} ${p.product_unit_name}</td>
+                                <td>${p.ordered_qty}</td>
+                                <td>${p.available_stock}</td>
+                                <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
+                            </tr>`;
                     } else {
                         html += `
-            <tr>
-                <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit}</strike></div><div class="text-danger"><small>Procurement Items Not Mapped</small></div></td>
-                <td><strike>${p.ordered_qty}</strike></td>
-                <td><strike>${p.available_stock}</strike></td>
-                <td><strike>${p.required_qty}</strike></td>
-            </tr>`;
+                            <tr>
+                                <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit_name}</strike></div><div class="text-danger"><small>Recipe Items Not Mapped</small></div></td>
+                                <td><strike>${p.ordered_qty}</strike></td>
+                                <td><strike>${p.available_stock}</strike></td>
+                                <td><strike>${p.required_qty}</strike></td>
+                            </tr>`;
                     }
-
-
-
                 });
 
                 $("#requirement_table").html(html);
@@ -301,7 +305,7 @@
                     <input type="number" value="${o.required_qty}" 
                         class="form-control qty" data-item="${o.procurement_item}">
                 </td>
-                <td class="unit" data-unit="${o.unit}">${o.unit}</td>
+                <td class="unit" data-unit="${o.unit}">${o.unit_name}</td>
                 <td><input value="0" class="form-control rate"></td>
                 <td class="item_total">0</td>
             </tr>`;
@@ -331,6 +335,7 @@
         if (status === 'pending') return 'bg-warning';
         if (status === 'confirmed') return 'bg-primary';
         if (status === 'procurement') return 'bg-info';
+        if (status === 'production-ready') return 'bg-warning';
         if (status === 'production') return 'bg-primary';
         if (status === 'delivered') return 'bg-success';
         if (status === 'cancelled') return 'bg-danger';
@@ -414,7 +419,7 @@
 
                     html += `
             <tr>
-                <td>${i.product_name} ${i.pack_size}${i.product_unit}</td>
+                <td>${i.product_name} ${i.pack_size} ${i.product_unit_name}</td>
                 <td>${i.quantity}</td>
                 <td>${i.price}</td>
                 <td>${total}</td>
@@ -450,7 +455,7 @@
                     rows += `
             <tr>
                 <td>${index + 1}</td>
-                <td>${i.product_name} ${i.pack_size}${i.product_unit}</td>
+                <td>${i.product_name} ${i.pack_size}${i.product_unit_name}</td>
                 <td>${i.product_hsn_code}</td>
                 <td>${i.quantity}</td>
                 <td>${i.price}</td>
@@ -715,7 +720,7 @@
             let pq = parseFloat($(this).find(".requiredqty").data("requiredqty")) || 0;
             let product_id = $(this).find(".product").data("product");
             if (pq > 0) {
-                products.push({ product_id: product_id, quantity: pq });
+          products.push({ product_id: product_id, quantity: pq ,unit:unit});
             }
         });
 

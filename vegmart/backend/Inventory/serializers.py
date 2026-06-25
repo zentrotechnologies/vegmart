@@ -3,7 +3,8 @@ from .models import *
 from Masters.models import *
 from Masters.serializers import *
 from rest_framework import serializers
-
+from Procurement.models import *
+from Procurement.serializers import *
 class WarehouseSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -24,70 +25,88 @@ class InventorySerializer(serializers.ModelSerializer):
         fields='__all__'
 
 class CustomInventorySerializer(serializers.ModelSerializer):
-    product_name = serializers.SerializerMethodField()
-    def get_product_name(self, obj):
-        obj_id = obj.product_variant
+    stock_name = serializers.SerializerMethodField()
+    def get_stock_name(self, obj):
+        obj_id = obj.stock_id
         
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
-                obj = ProductVariant.objects.filter(id=obj_id).first()
-                if obj is not None:
-                   ser=CustomProductVariantSerializer(obj)
-                   return ser.data['product_name']
+                if obj.inventory_type =='raw':
+                    obj = RawProductMaster.objects.filter(id=obj_id).first()
+                    if obj is not None:
+                        return obj.name
+                    else:
+                        return None
                 else:
-                    return None
+                    obj = ProductVariant.objects.filter(id=obj_id).first()
+                    if obj is not None:
+                        ser=CustomProductVariantSerializer(obj)
+                        return ser.data['product_name']
+                    else:
+                        return None
             except ProductVariant.DoesNotExist:
                 return None
         return None
     
 
 
-    product_unit = serializers.SerializerMethodField()
-    def get_product_unit(self, obj):
-        obj_id = obj.product_variant
+    unit_name = serializers.SerializerMethodField()
+    def get_unit_name(self, obj):
+        obj_id = obj.unit
         
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
-                obj = ProductVariant.objects.filter(id=obj_id).first()
+                obj = UnitMaster.objects.filter(id=obj_id).first()
                 if obj is not None:
-                   ser=CustomProductVariantSerializer(obj)
-                   return ser.data['product_unit']
+                    return obj.short_name
                 else:
                     return None
-            except ProductVariant.DoesNotExist:
+               
+            except UnitMaster.DoesNotExist:
                 return None
         return None
+    
+    
     
     pack_size = serializers.SerializerMethodField()
     def get_pack_size(self, obj):
-        obj_id = obj.product_variant
+        obj_id = obj.stock_id
         
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
-                obj = ProductVariant.objects.filter(id=obj_id).first()
-                if obj is not None:
-                   ser=CustomProductVariantSerializer(obj)
-                   return ser.data['pack_size']
-                else:
+                if obj.inventory_type =='raw':
                     return None
+                else:
+                    
+                    obj = ProductVariant.objects.filter(id=obj_id).first()
+                    if obj is not None:
+                        ser=CustomProductVariantSerializer(obj)
+                        return ser.data['pack_size']
+                    else:
+                        return None
             except ProductVariant.DoesNotExist:
                 return None
         return None
+    
     pack_type = serializers.SerializerMethodField()
     def get_pack_type(self, obj):
-        obj_id = obj.product_variant
-        
+        obj_id = obj.stock_id
         if obj_id is not None and obj_id !='' and obj_id !='None':
             try:
-                obj = ProductVariant.objects.filter(id=obj_id).first()
-                if obj is not None:
-                   ser=CustomProductVariantSerializer(obj)
-                   return ser.data['pack_type']
-                else:
+                if obj.inventory_type =='raw':
                     return None
+                else:
+                    
+                    obj = ProductVariant.objects.filter(id=obj_id).first()
+                    if obj is not None:
+                        ser=CustomProductVariantSerializer(obj)
+                        return ser.data['pack_type']
+                    else:
+                        return None
             except ProductVariant.DoesNotExist:
                 return None
         return None
+    
     class Meta:
         model= Inventory
         fields='__all__'
