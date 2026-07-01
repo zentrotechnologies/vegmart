@@ -60,10 +60,8 @@
         <thead>
           <tr>
             <th>Menu</th>
-            <th>Add</th>
-            <th>View</th>
-            <th>Edit</th>
-            <th>Delete</th>
+    <th>Permission</th>
+
           </tr>
         </thead>
         <tbody id="permission_table"></tbody>
@@ -198,21 +196,21 @@ function buildPermissionTable(existing){
 
     let html = "";
 
-    menus.forEach(m=>{
+    menus.forEach(m => {
 
         let p = existing.find(x => x.menu == m.id) || {};
+
+        let checked = p.create || p.read || p.edit || p.delete;
 
         html += `
         <tr>
             <td>${m.menuItem}</td>
-
-            <td><input type="checkbox" class="perm" data-type="create" data-id="${m.id}" ${p.add ? "checked":""}></td>
-
-            <td><input type="checkbox" class="perm" data-type="read" data-id="${m.id}" ${p.view ? "checked":""}></td>
-
-            <td><input type="checkbox" class="perm" data-type="edit" data-id="${m.id}" ${p.edit ? "checked":""}></td>
-
-            <td><input type="checkbox" class="perm" data-type="delete" data-id="${m.id}" ${p.delete ? "checked":""}></td>
+            <td class="text-center">
+                <input type="checkbox"
+                       class="perm"
+                       data-id="${m.id}"
+                       ${checked ? "checked" : ""}>
+            </td>
         </tr>`;
     });
 
@@ -256,14 +254,16 @@ function saveRole(){
 
     let result = [];
 
-    menus.forEach(m=>{
+    menus.forEach(m => {
+
+        let checked = $(`.perm[data-id="${m.id}"]`).is(":checked");
 
         result.push({
             menu_id: m.id,
-            create: $(`.perm[data-id=${m.id}][data-type=create]`).is(":checked"),
-            read: $(`.perm[data-id=${m.id}][data-type=read]`).is(":checked"),
-            edit: $(`.perm[data-id=${m.id}][data-type=edit]`).is(":checked"),
-            delete: $(`.perm[data-id=${m.id}][data-type=delete]`).is(":checked")
+            create: checked,
+            read: checked,
+            edit: checked,
+            delete: checked
         });
 
     });

@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="container-fluid">
+
+<div class="d-flex justify-content-between mb-3">
+    <h4>Complete Production</h4>
+    <a href="/production/production-list" class="btn btn-secondary">Back</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><b>Production Information</b></div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label>Batch</label>
+                <input id="batch" class="form-control" readonly>
+            </div>
+            <div class="col-md-3">
+                <label>Product</label>
+                <input id="product" class="form-control" readonly>
+            </div>
+            <div class="col-md-3">
+                <label>Recipe</label>
+                <input id="recipe" class="form-control" readonly>
+            </div>
+            <div class="col-md-3">
+                <label>Status</label>
+                <input id="status" class="form-control" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><b>Consumed Raw Materials</b></div>
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>Material</th>
+                <th>Required</th>
+                <th>Consumed</th>
+                <th>Unit</th>
+            </tr>
+            </thead>
+            <tbody id="raw_body">
+                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><b>Finished Output</b></div>
+    <div class="card-body">
+        <div class="row">
+
+            <div class="col-md-3">
+                <label>Expected Quantity</label>
+                <input id="expected_qty" class="form-control" readonly>
+            </div>
+
+            <div class="col-md-3">
+                <label>Actual Quantity</label>
+                <input id="actual_qty" class="form-control">
+            </div>
+
+            <div class="col-md-2">
+                <label>Unit</label>
+                <input id="unit" class="form-control" readonly>
+            </div>
+
+            <div class="col-md-2">
+                <label>Yield %</label>
+                <input id="yield" class="form-control" readonly>
+            </div>
+
+            <div class="col-md-2">
+                <label>Difference</label>
+                <input id="difference" class="form-control" readonly>
+            </div>
+
+        </div>
+
+        <div class="row mt-3">
+
+            <div class="col-md-6">
+                <label>Remarks</label>
+                <textarea id="remarks" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="col-md-3">
+                <label>Warehouse</label>
+                <input id="warehouse" class="form-control" value="" readonly>
+            </div>
+
+            <div class="col-md-3">
+                <label>Finished Batch</label>
+                <input id="finished_batch" class="form-control" readonly>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<div class="text-end">
+    <button class="btn btn-success" onclick="completeProduction()">
+        Complete Production
+    </button>
+</div>
+
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+const productionId="{{ production_id }}";
+
+$(function(){
+    loadProduction();
+});
+
+function loadProduction(){
+
+    $.post(
+        hosturl+"/api/Production/production_details",
+        {
+            csrfmiddlewaretoken:"{{ csrf_token }}",
+            id:productionId
+        },
+        function(res){
+
+            if(res.response.n!=1){
+                swal("Error",res.response.msg,"error");
+                return;
+            }
+
+            let d=res.data;
+
+            $("#batch").val(d.batch);
+            $("#finished_batch").val(d.batch);
+            $("#warehouse").val(d.warehouse);
+
+            $("#product").val(d.product_name);
+            $("#recipe").val(d.recipe_name);
+            $("#status").val(d.status);
+
+            $("#expected_qty").val(d.planned_quantity);
+            $("#actual_qty").val(d.actual_quantity>0?d.actual_quantity:d.planned_quantity);
+            $("#unit").val(d.planned_unit_name);
+
+            renderYield();
+
+            let html="";
+
+            (d.inputs||[]).forEach(function(i){
+
+                html+=`
+                <tr>
+                    <td>${i.name}</td>
+                    <td>${i.required_qty}</td>
+                    <td>${i.consumed_qty}</td>
+                    <td>${i.unit_name}</td>
+                </tr>`;
+
+            });
+
+            $("#raw_body").html(html);
+
+        }
+    );
+
+}
+
+$("#actual_qty").on("input",renderYield);
+
+function renderYield(){
+
+    let expected=parseFloat($("#expected_qty").val())||0;
+    let actual=parseFloat($("#actual_qty").val())||0;
+
+    if(expected<=0) return;
+
+    $("#yield").val(((actual/expected)*100).toFixed(2));
+
+    $("#difference").val((actual-expected).toFixed(2));
+
+}
+
+function completeProduction(){
+
+    $.post(
+
+        hosturl+"/api/Production/complete_production",
+
+        {
+            csrfmiddlewaretoken:"{{ csrf_token }}",
+            production_id:productionId,
+            actual_quantity:$("#actual_qty").val(),
+            remarks:$("#remarks").val()
+        },
+
+        function(res){
+
+            if(res.response.n==1){
+
+                swal(
+                    "Success",
+                    res.response.msg,
+                    "success"
+                ).then(function(){
+
+                    window.location="/production/production-list";
+
+                });
+
+            }else{
+
+                swal(
+                    "Error",
+                    res.response.msg,
+                    "error"
+                );
+
+            }
+
+        }
+
+    );
+
+}
+
+</script>
+
+{% endblock %}

@@ -9,7 +9,7 @@
         <div class="align-content-center">
             <input type="text" id="search" class="form-control d-inline w-auto" placeholder="Search">
             {% if role_id == 5 %}
-                <a class="btn btn-primary mx-2" href="/orders/place-order">Place Order</a>
+            <a class="btn btn-primary mx-2" href="/orders/place-order">Place Order</a>
             {%endif%}
         </div>
     </div>
@@ -75,47 +75,65 @@
             </div>
 
             <div class="modal-body">
-                <div class="col mb-2">
-                    <label>Supplier</label>
-                    <select id="supplier" class="form-control"></select>
+                <div id="required_to_procure">
+
+                    <div class="col mb-2">
+                        <label>Supplier</label>
+                        <select id="supplier" class="form-control"></select>
+                    </div>
+                    <div style="max-height:300px;overflow:auto;">
+                        <input type="hidden" value="" id="procure_order_id">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Ordered</th>
+                                    <th>Stock</th>
+                                    <th>Required</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requirement_table"></tbody>
+                        </table>
+                        <h6>Procurement Items</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Unit</th>
+                                    <th>Rate</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="procurement_body"></tbody>
+                        </table>
+                    </div>
+                    <label class="mt-2">Grand Total</label>
+                    <input id="grand_total" class="form-control" readonly>
+                    <label class="mt-2">Paid</label>
+                    <input id="paid" class="form-control">
+                    <label class="mt-2">Credit</label>
+                    <input id="credit" class="form-control" readonly>
+                    <button class="btn btn-primary my-2" onclick="autoProcure()">Auto Procure</button>
                 </div>
-                <div style="max-height:300px;overflow:auto;">
-                    <input type="hidden" value="" id="procure_order_id">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Ordered</th>
-                                <th>Stock</th>
-                                <th>Required</th>
-                            </tr>
-                        </thead>
-                        <tbody id="requirement_table"></tbody>
-                    </table>
-                    <h6>Procurement Items</h6>
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Unit</th>
-                                <th>Rate</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="procurement_body"></tbody>
-                    </table>
+                <div id="not_required_to_procure" class="d-none">
+                    <div style="max-height:300px;overflow:auto;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Ordered</th>
+                                    <th>Stock</th>
+                                    <th>Required</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview_requirement_table"></tbody>
+                        </table>
+                    </div>
+                    <i>All stocks are available no need to procure.</i>
+                    <button class="btn btn-primary my-2" onclick="markreadyforproduction()">Mark Ready Production</button>
                 </div>
-                <label class="mt-2">Grand Total</label>
-                <input id="grand_total" class="form-control" readonly>
 
-                <label class="mt-2">Paid</label>
-                <input id="paid" class="form-control">
-
-                <label class="mt-2">Credit</label>
-                <input id="credit" class="form-control" readonly>
-
-                <button class="btn btn-primary my-2" onclick="autoProcure()">Auto Procure</button>
             </div>
 
         </div>
@@ -181,48 +199,51 @@
     <td>
         <button class="btn btn-info btn-sm" onclick="viewOrder(${o.id})" title="View Order">👁️</button>
         <button class="btn btn-secondary btn-sm" onclick="printInvoice(${o.id})" title="Print Invoice">🧾</button>
-        ${`{{role_id}}` == 1  ? `
-            ${o.status == 'pending' || o.status == 'placed'  ? `
+        ${`{{role_id}}` == 1 ? `
+            ${o.status == 'pending' || o.status == 'placed' ? `
                 <button class="btn btn-success btn-sm" onclick="confirmOrder(${o.id})" title="Confirm Order">✔</button>
                 <button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" title="Cancel Order">✖</button>
             `: ``}
         `: ``}
 
 
-        ${`{{role_id}}` == 2 ||`{{role_id}}` == 1  ? `
+        ${`{{role_id}}` == 2 || `{{role_id}}` == 1 ? `
 
-        ${o.status == 'confirmed' ? `
-            <button class="btn btn-primary btn-sm" onclick="dispatchOrder(${o.id})" title="Dispatch Order">🚚</button>
-         `: ``}
+            ${o.status == 'dispatch-ready' ? ` 
+                <button class="btn btn-primary btn-sm" onclick="dispatchOrder(${o.id})" title="Dispatch Order">🚚</button>
+            `: ``}
          `: ``}
 
-        ${`{{role_id}}` == 2 ||`{{role_id}}` == 1  ? `
+        ${`{{role_id}}` == 2 || `{{role_id}}` == 1 ? `
         ${o.status == 'dispatched' ? `
             <button class="btn btn-primary btn-sm" onclick="deliverOrder(${o.id})" title="Delivered Order">Deliver</button>
          `: ``}
          `: ``}
 
-        ${`{{role_id}}` == 5 ||`{{role_id}}` == 1  ? `
+        ${`{{role_id}}` == 5 || `{{role_id}}` == 1 ? `
             ${o.credit_amount > 0 ? `
                 <button class="btn btn-warning btn-sm" onclick="openPayment(${o.id})" title="Make Payment">₹</button>
             `: ``}
          `: ``}
 
-        ${`{{role_id}}` == 3 ||`{{role_id}}` == 1  ? `
+        ${`{{role_id}}` == 3 ? `
          
-            ${o.status != 'delivered' && o.status != 'cancelled' && o.status == 'confirmed'? `
+            ${o.status != 'delivered' && o.status != 'cancelled' && o.status == 'confirmed' ? `
                 <button class="btn btn-info btn-sm" onclick="checkRequirement(${o.id})" title="Check Procurement Requirement">Procure</button>
             `: ``}
          `: ``}
-        ${`{{role_id}}` == 4 ||`{{role_id}}` == 1  ? `
+        ${`{{role_id}}` == 4 ? `
          
-            ${o.status == 'production-ready'? `
-                <button class="btn btn-info btn-sm" onclick="getProductionSummary(${o.id})" title="Check Production Summary">Start Production</button>
+            ${o.status == 'production-ready' ? `
+                <a class="btn btn-info btn-sm" title="Check Production Summary" href="/production/order-production/${o.id}">Start Production</a>
             `: ``}
          `: ``}
 
-
-
+        ${`{{role_id}}` == 4 ? `
+            ${o.status == 'production-ready'? ` 
+                <button class="btn btn-success btn-sm" onclick="checkStockavAilablity(${o.id})" title="Mark Dispatch Ready">Dispatch Ready</button>
+            `: ``}
+         `: ``}
     </td>
 </tr>`;
                     });
@@ -260,62 +281,109 @@
             }
         });
     }
-    function checkRequirement(order_id) {
+function checkStockavAilablity(order_id) {
 
+    $.post(
+        hosturl + "/api/Orders/check_stock_availablity",
+        {
+            csrfmiddlewaretoken: '{{csrf_token}}',
+            order_id: order_id
+        },
+        function (res) {
+
+            if (res.data.production_required) {
+
+                swal({
+                    title: "Stock Not Available",
+                    text: "Some products are not available in inventory. Please create a production order to replenish the stock.",
+                    icon: "warning"
+                }).then(() => {
+                    window.location.href = "/production/order-production/" + order_id;
+                });
+
+            } else {
+                swal({
+                    text: "Are You Sure You Want Mark This Order As Ready For Dispatch.",
+                    icon: "info"
+                }).then(() => {
+                    markreadyfordispatch(order_id);
+                });
+                
+
+            }
+
+        }
+    );
+
+}
+    function checkRequirement(order_id) {
+        
         $.post(hosturl + "/api/Procurement/requirement_by_order",
             {
                 csrfmiddlewaretoken: '{{csrf_token}}',
                 order_id: order_id
             },
+
             function (res) {
 
-                let html = "";
+                    let html = "";
 
-                res.data.products.forEach(p => {
-                    let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
-                    if (p.mapping_exist) {
-                        html += `
+                    res.data.products.forEach(p => {
+                        let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
+                        if (p.mapping_exist) {
+                            html += `
                             <tr>
                                 <td class="product" data-product="${p.product_id}" data-unit="${p.product_unit}">${p.product_name} ${p.pack_size} ${p.product_unit_name}</td>
                                 <td>${p.ordered_qty}</td>
                                 <td>${p.available_stock}</td>
                                 <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
                             </tr>`;
-                    } else {
-                        html += `
+                        } else {
+                            html += `
                             <tr>
                                 <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit_name}</strike></div><div class="text-danger"><small>Recipe Items Not Mapped</small></div></td>
                                 <td><strike>${p.ordered_qty}</strike></td>
                                 <td><strike>${p.available_stock}</strike></td>
                                 <td><strike>${p.required_qty}</strike></td>
                             </tr>`;
-                    }
-                });
-
-                $("#requirement_table").html(html);
-
-
-                var procurement_html = ''
-                // PROCUREMENT ITEMS
-                res.data.procurement_items.forEach(o => {
-                    procurement_html += `
-            <tr>
-                <td>${o.procurement_item_name}</td>
-                <td>
-                    <input type="number" value="${o.required_qty}" 
-                        class="form-control qty" data-item="${o.procurement_item}">
-                </td>
-                <td class="unit" data-unit="${o.unit}">${o.unit_name}</td>
-                <td><input value="0" class="form-control rate"></td>
-                <td class="item_total">0</td>
-            </tr>`;
-                });
-                $("#procurement_body").html(procurement_html);
+                        }
+                    });
 
 
 
-                $("#requirementModal").modal('show');
+                    debugger
+                if (!res.data?.procurement_items || res.data.procurement_items.length === 0) {
+                    $('#not_required_to_procure').removeClass('d-none')
+                    $('#required_to_procure').addClass('d-none')
+                    $("#preview_requirement_table").html(html);
+
+                } else {
+                    $('#not_required_to_procure').addClass('d-none')
+                    $('#required_to_procure').removeClass('d-none')
+                    $("#requirement_table").html(html);
+
+
+
+                    var procurement_html = ''
+                    // PROCUREMENT ITEMS
+                    res.data.procurement_items.forEach(o => {
+                        procurement_html += `
+                        <tr>
+                            <td>${o.procurement_item_name}</td>
+                            <td>
+                                <input type="number" value="${o.required_qty}" 
+                                    class="form-control qty" data-item="${o.procurement_item}">
+                            </td>
+                            <td class="unit" data-unit="${o.unit}">${o.unit_name}</td>
+                            <td><input value="0" class="form-control rate"></td>
+                            <td class="item_total">0</td>
+                        </tr>`;
+                    });
+                    $("#procurement_body").html(procurement_html);
+                    
+                }
                 $("#procure_order_id").val(order_id);
+                $("#requirementModal").modal('show');
 
 
             });
@@ -359,6 +427,15 @@
     }
     function dispatchOrder(id) {
         actionOrder(id, "dispatchorder", "Order Delivered");
+    }
+    function markreadyforproduction() {
+        let id=$("#procure_order_id").val()
+        actionOrder(id, "production-ready", "Order Ready for Production");
+        $("#requirementModal").modal('hide');
+
+    }
+    function markreadyfordispatch(id) {
+        actionOrder(id, "dispatch-ready", "Order Ready for dispatch");
     }
     function actionOrder(id, api, msg) {
 
@@ -432,6 +509,8 @@
             });
 
     }
+
+
     function printInvoice(order_id) {
 
         $.post(hosturl + "/api/Orders/orderdetails",
@@ -440,33 +519,33 @@
                 order_id: order_id
             },
             function (res) {
-
+                debugger
                 let o = res.data.order;
                 let items = res.data.items;
 
-                let subtotal = 0;
+                let subtotal = res.data.order.taxable_amount;
 
                 let rows = "";
 
                 items.forEach((i, index) => {
                     let total = i.quantity * i.price;
-                    subtotal += total;
 
                     rows += `
             <tr>
                 <td>${index + 1}</td>
-                <td>${i.product_name} ${i.pack_size}${i.product_unit_name}</td>
+                <td>${i.product_name} ${i.pack_size}${i.product_unit_name} ${i.pack_type}</td>
                 <td>${i.product_hsn_code}</td>
                 <td>${i.quantity}</td>
-                <td>${i.price}</td>
-                <td>${total}</td>
+                <td>₹${i.price_without_gst}</td>
+                <td>(${i.gst_percentage}%) ₹${i.gst_amount}</td>
+                <td>₹${i.price}</td>
+                <td>₹${total}</td>
             </tr>`;
                 });
 
                 // GST Calculation (example 5%)
-                let gst_rate = 5;
-                let gst_amount = subtotal * gst_rate / 100;
-                let grand_total = subtotal + gst_amount;
+                let gst_amount = res.data.order.gst_amount;
+                let grand_total = res.data.order.total_amount;
 
                 let paid = o.paid_amount || 0;
                 let credit = grand_total - paid;
@@ -577,7 +656,9 @@
                     <th>Product</th>
                     <th>HSN</th>
                     <th>Qty</th>
-                    <th>Rate</th>
+                    <th>Ex GST</th>
+                    <th>GST%</th>
+                    <th>Inc GST</th>
                     <th>Total</th>
                 </tr>
             </thead>
@@ -593,7 +674,7 @@
                 <td class="right">₹ ${subtotal.toFixed(2)}</td>
             </tr>
             <tr>
-                <td class="right">GST (${gst_rate}%)</td>
+                <td class="right">GST Amount</td>
                 <td class="right">₹ ${gst_amount.toFixed(2)}</td>
             </tr>
             <tr>
@@ -719,8 +800,11 @@
 
             let pq = parseFloat($(this).find(".requiredqty").data("requiredqty")) || 0;
             let product_id = $(this).find(".product").data("product");
+            let unit = $(this).find(".product").data("unit");
+
+
             if (pq > 0) {
-          products.push({ product_id: product_id, quantity: pq ,unit:unit});
+                products.push({ product_id: product_id, quantity: pq, unit: unit });
             }
         });
 
@@ -742,6 +826,7 @@
                 if (res.response.n == 1) {
                     swal("Success", res.response.msg, "success");
                     $("#entryModal").modal('hide');
+                    reloadPage()
                 } else {
                     swal("Error", res.response.msg, "error");
                 }

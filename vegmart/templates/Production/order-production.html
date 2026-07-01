@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between mb-3">
+        <h4>Create Production From Order</h4>
+
+        <a href="/production/" class="btn btn-secondary">
+            Back
+        </a>
+    </div>
+
+    <!-- ORDER DETAILS -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            <b>Order Information</b>
+        </div>
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-3">
+                    <label>Customer</label>
+                    <input id="customer" class="form-control" readonly>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Order Date</label>
+                    <input id="order_date" class="form-control" readonly>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Delivery Date</label>
+                    <input id="delivery_date" class="form-control" readonly>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Status</label>
+                    <input id="order_status" class="form-control" readonly>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ORDER ITEMS -->
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            <b>Order Items</b>
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Variant</th>
+
+                        <th>Quantity</th>
+
+                        <th>Unit</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="order_items"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- RECOMMENDATION -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div class="d-flex justify-content-between">
+
+                <b>Production Recommendation</b>
+
+                <div>
+
+                    <button class="btn btn-primary btn-sm"
+                        onclick="selectAll()">
+
+                        Select All
+
+                    </button>
+
+                    <button class="btn btn-secondary btn-sm"
+                        onclick="clearSelection()">
+
+                        Clear
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered">
+
+                <thead>
+
+                    <tr>
+
+                        <th width="40"></th>
+
+                        <th>Product</th>
+
+                        <th>Recipe</th>
+
+                        <th>Quantity</th>
+
+                        <th>Status</th>
+
+                        <th></th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="recommendation_body"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="text-end mt-3">
+
+        <button
+            class="btn btn-success"
+            onclick="createProduction()">
+
+            Create Selected Production
+
+        </button>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+<script>
+    const orderId = "{{ order_id }}";
+    $(document).ready(function(){
+
+    loadOrderRecommendation();
+
+});
+function loadOrderRecommendation(){
+
+    $.post(
+
+        hosturl + "/api/Production/order_production_recommendation",
+
+        {
+
+            csrfmiddlewaretoken:"{{ csrf_token }}",
+
+            order_id:orderId
+
+        },
+
+        function(res){
+
+            if(res.response.n!=1){
+
+                swal("Error",res.response.msg,"error");
+
+                return;
+
+            }
+
+            bindOrder(res.data);
+
+        }
+
+    );
+
+}
+function bindOrder(data){
+
+    $("#customer").val(data.customer);
+
+    $("#order_date").val(data.order_date);
+
+    $("#delivery_date").val(data.delivery_date);
+
+    $("#order_status").val(data.status);
+
+    let orderHtml="";
+
+    data.order_items.forEach(function(item){
+
+        orderHtml+=`
+        <tr>
+
+            <td>${item.variant_name}</td>
+
+            <td>${item.quantity}</td>
+
+            <td>${item.unit}</td>
+
+        </tr>`;
+
+    });
+
+    $("#order_items").html(orderHtml);
+
+    bindRecommendation(data.recommendations);
+
+}
+function bindRecommendation(recommendations){
+
+    let html="";
+
+    recommendations.forEach(function(r){
+
+        html+=`
+
+        <tr>
+
+            <td>
+
+                <input
+
+                    type="checkbox"
+
+                    class="recommendation"
+
+                    data-product="${r.product_id}"
+
+                    data-recipe="${r.recipe_id}"
+
+                    data-qty="${r.quantity}"
+
+                    ${r.ready ? "checked" : ""}
+
+                    ${r.ready ? "" : "disabled"}
+
+                >
+
+            </td>
+
+            <td>${r.product_name}</td>
+
+            <td>${r.recipe_name} (V${r.recipe_version})</td>
+
+            <td>${r.quantity} ${r.unit_name}</td>
+
+            <td>
+
+                ${
+                    r.ready
+                    ? '<span class="badge bg-success">Ready</span>'
+                    : '<span class="badge bg-danger">Shortage</span>'
+                }
+
+            </td>
+
+            <td>
+
+                <button
+
+                    class="btn btn-info btn-sm"
+
+                    onclick="toggleMaterials(${r.product_id})">
+
+                    View
+
+                </button>
+
+            </td>
+
+        </tr>
+
+        <tr
+
+            id="materials_${r.product_id}"
+
+            style="display:none;">
+
+            <td colspan="6">
+
+                <table class="table table-sm">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Material</th>
+
+                            <th>Required</th>
+
+                            <th>Available</th>
+
+                            <th>Status</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+        `;
+
+        r.items.forEach(function(m){
+
+            html+=`
+
+            <tr>
+
+                <td>${m.name}</td>
+
+                <td>${m.required_qty} ${m.unit}</td>
+
+                <td>${m.available_qty} ${m.unit}</td>
+
+                <td>
+
+                ${
+                    m.available
+                    ?'<span class="badge bg-success">Available</span>'
+                    :'<span class="badge bg-danger">Short</span>'
+                }
+
+                </td>
+
+            </tr>
+
+            `;
+
+        });
+
+        html+=`
+
+                    </tbody>
+
+                </table>
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+    $("#recommendation_body").html(html);
+
+}
+function toggleMaterials(productId){
+
+    $("#materials_"+productId).toggle();
+
+}
+
+
+function createProduction(){
+
+    let productions=[];
+
+    $(".recommendation:checked").each(function(){
+
+        productions.push({
+
+            product_id:$(this).data("product"),
+
+            recipe_id:$(this).data("recipe"),
+
+            quantity:$(this).data("qty")
+
+        });
+
+    });
+
+    if(productions.length==0){
+
+        swal("Error","Select at least one product.","error");
+
+        return;
+
+    }
+
+    $.ajax({
+
+        url:hosturl+"/api/Production/create_order_production",
+
+        type:"POST",
+
+        contentType:"application/json",
+
+        data:JSON.stringify({
+
+            order_id:orderId,
+
+            productions:productions
+
+        }),
+
+        success:function(res){
+
+            if(res.response.n==1){
+
+                swal(
+
+                    "Success",
+
+                    res.response.msg,
+
+                    "success"
+
+                ).then(()=>{
+
+                    window.location="/production/production-list";
+
+                });
+
+            }else{
+
+                swal(
+
+                    "Error",
+
+                    res.response.msg,
+
+                    "error"
+
+                );
+
+            }
+
+        }
+
+    });
+
+}
+</script>
+{% endblock %}

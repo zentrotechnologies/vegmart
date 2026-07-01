@@ -25,6 +25,7 @@ urlpatterns = [
     path('addproduct', addproduct.as_view()),
     path('productlist', productlist.as_view()),
     path('procurementreadyproductlist', procurementreadyproductlist.as_view()),
+    path('productionreadyproductlist', productionreadyproductlist.as_view()),
 
     path('product_list_pagination_api', product_list_pagination_api.as_view()),
     path('productupdate', productupdate.as_view()),

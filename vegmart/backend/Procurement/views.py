@@ -132,7 +132,6 @@ class requirement_by_order(GenericAPIView):
     def post(self, request):
 
         order_id = request.data.get("order_id")
-
         if not order_id:
             return Response({
                 "data": {
@@ -145,9 +144,7 @@ class requirement_by_order(GenericAPIView):
                 }
             })
 
-        order_items = OrderItem.objects.filter(
-            order=order_id
-        )
+        order_items = OrderItem.objects.filter(order=order_id)
 
         if not order_items.exists():
             return Response({
@@ -163,42 +160,28 @@ class requirement_by_order(GenericAPIView):
 
         product_data = []
         procurement_summary = {}
-
-        product_variants = ProductVariant.objects.filter(
-            isActive=True
-        )
-
-        products = Product.objects.filter(
-            isActive=True
-        )
-
-        raw_products = RawProductMaster.objects.filter(
-            isActive=True
-        )
-        units = UnitMaster.objects.filter(
-            isActive=True
-        )
+        product_variants = ProductVariant.objects.filter(isActive=True)
+        products = Product.objects.filter(isActive=True)
+        raw_products = RawProductMaster.objects.filter(isActive=True)
+        units = UnitMaster.objects.filter(isActive=True)
 
         for item in order_items:
             ordered_qty = float(item.quantity or 0)
+            stock = (Inventory.objects.filter(stock_id=item.product,inventory_type='finished',isActive=True).aggregate(total=Sum("quantity"))["total"] or 0)
+            # stock = (
+            #     Inventory.objects.filter(
+            #         stock_id=item.product_variant
+            #     ).aggregate(
+            #         total=Sum("quantity")
+            #     )["total"] or 0
+            # )
+            # required_product_qty = max(0,ordered_qty - stock)
+            variant = product_variants.filter(id=item.product_variant).first()
+            
 
-            stock = (
-                Inventory.objects.filter(
-                    stock_id=item.product_variant
-                ).aggregate(
-                    total=Sum("quantity")
-                )["total"] or 0
-            )
-
-            required_product_qty = max(
-                0,
-                ordered_qty - stock
-            )
-
-            variant = product_variants.filter(
-                id=item.product_variant
-            ).first()
-            print("variant",variant)
+            
+            
+            
             product_name = ""
             product_id = ""
             pack_size = 1
@@ -206,44 +189,27 @@ class requirement_by_order(GenericAPIView):
             product_unit_name = ""
 
             if variant:
-
-                pack_size = float(
-                    variant.pack_size or 1
-                )
-
+                pack_size = float(variant.pack_size or 1)
                 product_id = variant.product
-
-                product_obj = products.filter(
-                    id=variant.product
-                ).first()
-
+                product_obj = products.filter(id=variant.product).first()
                 if product_obj:
                     product_name = product_obj.name
                     product_unit = product_obj.unit
-                    
                     if product_obj.unit is not None and product_obj.unit !='':
                         unit_obj=UnitMaster.objects.filter(id=product_obj.unit,isActive=True).first()
                         if unit_obj is not None:
                             product_unit_name = unit_obj.short_name
-
-            if required_product_qty <= 0:
-
-                product_data.append({
-                    "product_name": product_name,
-                    "product_variant": item.product_variant,
-                    "product_id": product_id,
-                    "ordered_qty": ordered_qty,
-                    "available_stock": stock,
-                    "required_qty": 0,
-                    "mapping_exist": False,
-                    "product_unit": product_unit,
-                    "product_unit_name": product_unit_name,
-                    
-                    "pack_size": pack_size,
-                })
-
-                continue
-
+                            
+                            
+                            
+            #convert the order quantity in base unit quantity and check the stock
+            pack_size=variant.pack_size
+            required_product_qty =float(pack_size) * float(ordered_qty)
+            result=convert_to_base_unit(required_product_qty,product_unit)
+            required_qty_base = result["quantity"]
+            required_product_qty = max(0,required_qty_base - stock)
+            
+            
             active_recipe = RecipeMaster.objects.filter(
                 product=str(product_id),
                 status="active",
@@ -263,6 +229,25 @@ class requirement_by_order(GenericAPIView):
                 mapping_exist = mappings.exists()
             else:
                 print("No Active  recipe")
+            if not active_recipe:
+                continue
+                
+            if required_product_qty <= 0:
+                product_data.append({
+                    "product_name": product_name,
+                    "product_variant": item.product_variant,
+                    "product_id": product_id,
+                    "ordered_qty": ordered_qty,
+                    "available_stock": stock,
+                    "required_qty": 0,
+                    "mapping_exist": mapping_exist,
+                    "product_unit": product_unit,
+                    "product_unit_name": product_unit_name,
+                    "pack_size": pack_size,
+                })
+                continue
+
+
                 
                 
             product_data.append({
@@ -277,50 +262,21 @@ class requirement_by_order(GenericAPIView):
                 "product_unit_name": product_unit_name,
                 "pack_size": pack_size,
             })
+            print("hii")
 
-            if not active_recipe:
-                continue
-
-            output_qty = float(
-                active_recipe.standard_output_qty or 1
-            )
-
-            production_qty = (
-                required_product_qty * pack_size
-            )
-
+            
+            
             for raw in mappings:
                 print("raw",raw)
-                recipe_qty = float(
-                    raw.quantity or 0
-                )
-                # print("recipe_qty",recipe_qty)
-                # required_raw_qty = (
-                #     recipe_qty / output_qty
-                # ) * production_qty
-                # print("required_raw_qty",required_raw_qty)
-                # wastage = float(
-                #     raw.wastage_percent or 0
-                # )
-
-                # required_raw_qty += (
-                #     required_raw_qty * wastage / 100
-                # )
-                
-                
+                recipe_qty = float(raw.quantity or 0)
                 required_raw_qty = recipe_qty
-
                 item_id = str(raw.raw_product_id)
-
                 if item_id not in procurement_summary:
                     procurement_summary[item_id] = 0
-
                 procurement_summary[item_id] += required_raw_qty
 
         procurement_data = []
-
         for item_id, qty in procurement_summary.items():
-
             raw_item = raw_products.filter(
                 id=item_id
             ).first()
@@ -332,19 +288,11 @@ class requirement_by_order(GenericAPIView):
                     unit_name=unit_nobj.short_name
                 
             procurement_data.append({
-
                 "procurement_item": item_id,
-
-                "procurement_item_name":
-                    raw_item.name if raw_item else "",
-
-                "unit":
-                    raw_item.unit if raw_item else "",
-                    
+                "procurement_item_name":raw_item.name if raw_item else "",
+                "unit":raw_item.unit if raw_item else "",
                 "unit_name":unit_name,
-
-                "required_qty":
-                    round(qty, 2)
+                "required_qty":round(qty, 2)
             })
 
         return Response({

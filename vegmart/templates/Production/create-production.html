@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+
+{% block layout %}
+<div class="container-fluid">
+
+    <form id="productionForm">
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Create Production</h5>
+            </div>
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-3">
+                        <label>Mode</label>
+                        <select id="mode" class="form-select">
+                            <option value="manual" selected>Manual</option>
+                            <!-- <option value="order">From Order</option> -->
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 order-section d-none">
+                        <label>Order</label>
+                        <input id="order_id" class="form-control">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Product</label>
+                        <select id="product" class="form-select"></select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Recipe</label>
+                        <select id="recipe" class="form-select">
+                            <option value="">Select Product for recipies</option>
+
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="row mt-3">
+
+                    <div class="col-md-3">
+                        <label>Production Quantity</label>
+                        <input id="production_qty" class="form-control">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Unit</label>
+                        <input id="unit_name" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Warehouse</label>
+                        <select id="warehouse" class="form-select">
+                            <option value="0">MAIN</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100" onclick="generateRecommendation()">
+                            Generate Recommendation
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                Production Recommendation
+            </div>
+
+            <div class="card-body">
+
+                <div class="row text-center">
+                    <div class="col">
+                        <h6>Recipe</h6>
+                        <p id="recipe_name">-</p>
+                    </div>
+
+                    <div class="col">
+                        <h6>Recipe Version</h6>
+                        <p id="recipe_version">-</p>
+                    </div>
+
+                    <div class="col">
+                        <h6>Expected Yield</h6>
+                        <p id="yield">-</p>
+                    </div>
+
+                    <div class="col">
+                        <h6>Estimated Cost</h6>
+                        <p id="estimated_cost">-</p>
+                    </div>
+
+                    <div class="col">
+                        <h6>Status</h6>
+                        <p id="recommendation_status">
+                            <span class="badge bg-secondary">
+                                Pending
+                            </span>
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card mb-3">
+
+            <div class="card-header">
+                Raw Material Requirement
+            </div>
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered">
+
+                    <thead>
+
+                        <tr>
+                            <th>Raw Material</th>
+                            <th>Required Qty</th>
+                            <th>Available Qty</th>
+                            <th>Status</th>
+                            <th>Consume Qty</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="raw_material_body">
+
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                Click Generate Recommendation
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <div class="card mb-3">
+
+            <div class="card-header">
+                Expected Output
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-3">
+                        <label>Finished Product</label>
+                        <input id="finished_product" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Quantity</label>
+                        <input id="finished_qty" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Unit</label>
+                        <input id="finished_unit" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Batch Number</label>
+                        <input id="batch" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label>Yield</label>
+                        <input id="expected_yield" class="form-control" readonly>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="text-end mb-4">
+
+            <a href="/production/production-list" class="btn btn-secondary">
+                Cancel
+            </a>
+
+            <button type="button" class="btn btn-success" onclick="startProduction()">
+                Start Production
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
+
+{% block page_js %}
+{{ block.super }}
+
+<script>
+
+    $("#mode").change(function () {
+
+        switchMode();
+
+    });
+    function loadDropdowns() {
+
+        loadProducts();
+
+        loadWarehouses();
+
+    }
+    function loadProducts() {
+
+        $.get(
+
+            hosturl + "/api/Masters/productionreadyproductlist",
+
+            function (res) {
+
+                let html = '<option value="">Select Product</option>';
+
+                res.data.forEach(function (o) {
+
+                    html += `
+                <option value="${o.id}">
+                    ${o.name}
+                </option>`;
+
+                });
+
+                $("#product").html(html);
+
+            }
+
+        );
+
+    }
+    function loadWarehouses() {
+
+        $.get(
+
+            hosturl + "/api/Inventory/warehouselist",
+
+            function (res) {
+
+                let html = "";
+
+                res.data.forEach(function (o) {
+
+                    html += `
+                <option value="${o.id}">
+                    ${o.name}
+                </option>`;
+
+                });
+
+                $("#warehouse").html(html);
+
+            }
+
+        );
+
+    }
+    $("#product").change(function () {
+
+        loadRecipe();
+
+    });
+    function loadRecipe() {
+
+        $.post(
+
+            hosturl + "/api/Procurement/get_product_recipe_list",
+
+            {
+
+                csrfmiddlewaretoken: "{{ csrf_token }}",
+
+                product: $("#product").val()
+
+            },
+
+            function (res) {
+
+                let html = '<option value="">Select Recipe</option>';
+
+                res.data.forEach(function (o) {
+
+                    html += `
+
+                <option
+
+                    value="${o.id}"
+
+                    data-unit="${o.output_unit}"
+
+                    data-unit-name="${o.output_unit_name}"
+
+                    data-version="${o.version}"
+
+                    data-qty="${o.standard_output_qty}">
+
+                    ${o.recipe_name}
+
+                    (V${o.version})
+
+                </option>
+
+                `;
+
+                });
+
+                $("#recipe").html(html);
+
+            }
+
+        );
+
+    }
+    $("#recipe").change(function () {
+
+        let option = $("#recipe option:selected");
+
+        $("#unit_name").val(option.data("unit-name"));
+
+    });
+    $(document).ready(function () {
+
+        loadDropdowns();
+        switchMode();
+
+    });
+    function switchMode() {
+
+        if ($("#mode").val() == "manual") {
+
+            $(".order-section").hide();
+            $(".manual-section").show();
+
+        } else {
+
+            $(".manual-section").hide();
+            $(".order-section").show();
+
+        }
+
+    }
+    function generateRecommendation() {
+
+        if ($("#recipe").val() == "") {
+
+            swal("Error", "Please select recipe.", "error");
+
+            return;
+
+        }
+
+        if ($("#production_qty").val() == "") {
+
+            swal("Error", "Please enter production quantity.", "error");
+
+            return;
+
+        }
+
+        $.ajax({
+
+            url: hosturl + "/api/Production/generate_recommendation",
+
+            type: "POST",
+
+            contentType: "application/json",
+
+            data: JSON.stringify({
+
+                recipe_id: $("#recipe").val(),
+
+                quantity: $("#production_qty").val(),
+
+                warehouse: $("#warehouse").val()
+
+            }),
+
+            success: function (res) {
+
+                renderRecommendation(res);
+
+            }
+
+        });
+
+    }
+    function renderRecommendation(res) {
+
+        $("#recipe_name").text(res.data.recipe_name);
+        $("#recipe_version").text("V" + res.data.recipe_version);
+
+        $("#yield").text(res.data.expected_yield + " %");
+
+        $("#estimated_cost").text(res.data.estimated_cost);
+
+        $("#finished_product").val(res.data.product_name);
+
+        $("#finished_qty").val(res.data.output_qty);
+
+        $("#finished_unit").val(res.data.output_unit_name);
+
+        $("#batch").val(res.data.batch);
+
+        $("#expected_yield").val(res.data.expected_yield + " %");
+
+        let html = "";
+
+        res.data.items.forEach(function (o) {
+
+            html += `
+
+        <tr>
+
+            <td>${o.name}</td>
+
+            <td>${o.required_qty}</td>
+
+            <td>${o.available_qty}</td>
+
+            <td>
+
+            ${o.available
+                    ? '<span class="badge bg-success">Available</span>'
+                    : '<span class="badge bg-danger">Short</span>'
+                }
+
+            </td>
+
+            <td>
+
+                <input
+
+                    class="form-control consume"
+
+                    data-id="${o.raw_product_id}"
+                    data-unit="${o.unit}"
+
+                    value="${o.required_qty}">
+
+            </td>
+
+        </tr>
+
+        `;
+
+        });
+
+        $("#raw_material_body").html(html);
+
+    }
+    function startProduction() {
+
+        let items = [];
+
+        $(".consume").each(function () {
+
+            items.push({
+
+                raw_product_id: $(this).data("id"),
+                quantity: $(this).val(),
+                unit: $(this).data("unit"),
+
+
+            });
+
+        });
+
+        $.ajax({
+
+            url: hosturl + "/api/Production/create_production",
+
+            type: "POST",
+
+            contentType: "application/json",
+
+            data: JSON.stringify({
+
+                production_type: $("#mode").val(),
+
+                order_id: $("#order_id").val(),
+
+                product_id: $("#product").val(),
+
+                recipe_id: $("#recipe").val(),
+
+                quantity: $("#production_qty").val(),
+
+                warehouse: $("#warehouse").val(),
+
+                items: items
+
+            }),
+
+            success: function (res) {
+
+                if (res.response.n == 1) {
+
+                    swal(
+
+                        "Success",
+
+                        res.response.msg,
+
+                        "success"
+
+                    ).then(function () {
+
+                        window.location = "/production/production-list";
+
+                    });
+
+                } else {
+
+                    swal(
+
+                        "Error",
+
+                        res.response.msg,
+
+                        "error"
+
+                    );
+
+                }
+
+            }
+
+        });
+
+    }
+
+</script>
+
+{% endblock %}

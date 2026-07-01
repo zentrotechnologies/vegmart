@@ -19,3 +19,79 @@ def production_list(request):
     else:
         messages.error(request, 'Session expired. Please log in again.')
         return redirect('Frontend_User:login')
+    
+    
+def create(request):
+    token = request.session.get('token', False)
+    if token:
+        return render(request, 'Production/create-production.html')
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+    
+    
+def details(request,id):
+    token = request.session.get('token', False)
+    if token:
+        context = {
+            "production_id": id
+        }
+
+        return render(
+            request,
+            "Production/production-details.html",
+            context
+        )
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+    
+def complete(request,id):
+    token = request.session.get('token', False)
+    if token:
+        context = {
+            "production_id": id
+        }
+
+        return render(
+            request,
+            "Production/complete-production.html",
+            context
+        )
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+    
+def order_production(request,id):
+    token = request.session.get('token', False)
+    if token:
+        context = {
+            "order_id": id
+        }
+
+        return render(
+            request,
+            "Production/order-production.html",
+            context
+        )
+    else:
+        messages.error(request, 'Session expired. Please log in again.')
+        return redirect('Frontend_User:login')
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

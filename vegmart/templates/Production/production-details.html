@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block layout %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between mb-3">
+        <h4>Production Details</h4>
+        <div><a href="/production/production-list" class="btn btn-secondary">Back</a>
+            <a id="complete_btn" href="#" class="btn btn-success">Complete Production</a>
+        </div>
+    </div>
+
+    <div class="row overflow-auto">
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header"><b>Batch Information</b></div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Batch</th>
+                            <td id="batch"></td>
+                        </tr>
+                        <tr>
+                            <th>Product</th>
+                            <td id="product"></td>
+                        </tr>
+                        <tr>
+                            <th>Recipe</th>
+                            <td id="recipe"></td>
+                        </tr>
+                        <tr>
+                            <th>Order</th>
+                            <td id="order"></td>
+                        </tr>
+                        <tr>
+                            <th>Mode</th>
+                            <td id="mode"></td>
+                        </tr>
+                        <tr>
+                            <th>Status</th>
+                            <td id="status"></td>
+                        </tr>
+                        <tr>
+                            <th>Planned Qty</th>
+                            <td id="planned_qty"></td>
+                        </tr>
+                        <tr>
+                            <th>Actual Qty</th>
+                            <td id="actual_qty"></td>
+                        </tr>
+                        <tr>
+                            <th>Created</th>
+                            <td id="created"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><b>Summary</b></div>
+                <div class="card-body text-center">
+                    <h6>Yield</h6>
+                    <h4 id="yield">-</h4>
+                    <h6>Total Cost</h6>
+                    <h4 id="cost">-</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header"><b>Raw Material Consumption</b></div>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th>Required</th>
+                            <th>Consumed</th>
+                            <th>Unit</th>
+                            <th>Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="raw_body">
+                        <tr>
+                            <td colspan="5">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header"><b>Finished Goods</b></div>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Expected</th>
+                            <th>Actual</th>
+                            <th>Unit</th>
+                            <th>Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="output_body"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><b>Inventory Movements</b></div>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Inventory</th>
+                            <th>Transaction</th>
+                            <th>Qty</th>
+                            <th>Unit</th>
+                            <th>Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody id="movement_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block page_js %}
+{{ block.super }}
+<script>
+    const productionId = window.location.pathname.split('/').filter(Boolean).pop();
+
+    function badge(s) {
+        if (s === 'completed') return '<span class="badge bg-success">Completed</span>';
+        if (s === 'processing' || s === 'started') return '<span class="badge bg-warning">Processing</span>';
+        return '<span class="badge bg-secondary">' + s + '</span>';
+    }
+
+    $(function () { loadDetails(); });
+
+    function loadDetails() {
+        $.post(hosturl + '/api/Production/production_details',
+            { csrfmiddlewaretoken: '{{ csrf_token }}', id: productionId },
+            function (res) {
+                if (res.response.n !== 1) { swal('Error', res.response.msg, 'error'); return; }
+                let d = res.data;
+                $('#batch').text(d.batch);
+                $('#product').text(d.product_name);
+                $('#recipe').text(d.recipe_name);
+                $('#order').text(d.order_id || 'Manual');
+                $('#mode').text(d.production_type);
+                $('#status').html(badge(d.status));
+                $('#planned_qty').text(d.planned_quantity + ' ' + d.planned_unit_name);
+                $('#actual_qty').text(d.actual_quantity + ' ' + d.actual_unit_name);
+                $('#created').text(d.created_at);
+                $('#yield').text(d.yield_percent + '%');
+                $('#cost').text('₹' + d.total_cost);
+                $('#complete_btn').attr('href', '/production/complete/' + productionId);
+
+                let raw = '';
+                (d.inputs || []).forEach(i => {
+                    raw += `<tr><td>${i.name}</td><td>${i.required_qty}</td><td>${i.consumed_qty}</td><td>${i.unit_name}</td><td>${i.inventory_batch || '-'}</td></tr>`;
+                });
+                $('#raw_body').html(raw || '<tr><td colspan="5">No Data</td></tr>');
+
+                let out = '';
+                (d.outputs || []).forEach(o => {
+                    out += `<tr><td>${o.product_name}</td><td>${o.expected_qty}</td><td>${o.actual_qty}</td><td>${o.unit_name}</td><td>${o.batch}</td></tr>`;
+                });
+                $('#output_body').html(out || '<tr><td colspan="5">No Output</td></tr>');
+
+                let mv = '';
+                (d.movements || []).forEach(m => {
+                    mv += `<tr><td>${m.stock_name}</td><td>${m.transaction}</td><td>${m.quantity}</td><td>${m.unit_name}</td><td>${m.reference}</td></tr>`;
+                });
+                $('#movement_body').html(mv || '<tr><td colspan="5">No Inventory Movement Yet</td></tr>');
+            });
+    }
+</script>
+{% endblock %}

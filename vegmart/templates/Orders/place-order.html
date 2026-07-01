@@ -120,12 +120,35 @@
         <div class="card-header">
           <h5>Order Summary</h5>
         </div>
+
         <div class="card-body">
-          <div id="cartItems"></div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                    <th width="40%">Product</th>
+                    <th width="50%">Pricing</th>
+                    <th width="10%" class="text-end">Total</th>
+                </tr>
+              </thead>
+
+              <tbody id="cartItems"></tbody>
+            </table>
+          </div>
 
           <hr>
 
-          <h4>Total ₹ <span id="grand_total">0.00</span></h4>
+          <h5>GST Classification</h5>
+
+          <div id="gst_classification"></div>
+
+          <hr>
+
+          <div class="d-flex justify-content-between">
+            <h5>Grand Total</h5>
+            <h5>₹ <span id="grand_total">0.00</span></h5>
+          </div>
 
           <select id="payment_mode" class="form-control mb-2">
             <option value="cash">Cash</option>
@@ -138,6 +161,7 @@
           <button class="btn btn-success w-100" onclick="saveOrder()">
             Save Order
           </button>
+
         </div>
       </div>
     </div>
@@ -227,7 +251,16 @@
         quantity: qty,
         price: variants[id].price,
         name: variants[id].name,
-        image_url: variants[id].image
+        image_url: variants[id].image,
+        gst_percentage: variants[id].gst_percentage,
+        price_without_gst: variants[id].price_without_gst,
+        gst_amount: variants[id].gst_amount,
+        pack_size: variants[id].pack_size,
+        pack_type: variants[id].pack_type,
+        unit: variants[id].unit,
+
+
+
       });
       $("#card" + id).addClass("selected");
     } else {
@@ -238,30 +271,132 @@
   }
 
   function renderCart() {
-    let html = '';
+
+    let html = "";
     let total = 0;
+    let gstSummary = {};
 
-    cart.forEach(item => {
-      let rowTotal = item.quantity * item.price;
-      total += rowTotal;
+    cart.forEach((item, index) => {
 
-      html += `
-<div class="cart-row">
-<div>
-<b>${item.name}</b><br>
-${item.quantity} × ₹${item.price}
-</div>
-<div>₹${rowTotal.toFixed(2)}</div>
-</div>`;
+      let qty = item.quantity;
+
+      let priceEx = parseFloat(item.price_without_gst);
+
+      let gstPerUnit = parseFloat(item.gst_amount);
+
+      let priceInc = parseFloat(item.price);
+
+      let taxable = qty * priceEx;
+
+      let gstAmount = qty * gstPerUnit;
+
+      let lineTotal = qty * priceInc;
+
+      total += lineTotal;
+
+      if (!gstSummary[item.gst_percentage]) {
+        gstSummary[item.gst_percentage] = {
+          taxable: 0,
+          gst: 0
+        };
+      }
+
+      gstSummary[item.gst_percentage].taxable += taxable;
+      gstSummary[item.gst_percentage].gst += gstAmount;
+
+html += `
+<tr>
+
+    <td>
+        <div class="fw-bold">
+            ${item.name}
+            ${item.pack_size}
+            ${item.unit}
+            ${item.pack_type}
+        </div>
+
+        <div class="small">
+            Qty : <b>${qty}</b>
+        </div>
+    </td>
+
+    <td>
+
+        <div class="small">
+            Ex GST:
+            <b>₹${priceEx.toFixed(2)}</b>
+        </div>
+
+        <div class="small">
+            GST(${item.gst_percentage}%):
+            <b>₹${gstAmount.toFixed(2)}</b>
+        </div>
+
+        <div class="small">
+            Inc GST:
+            <b>₹${priceInc.toFixed(2)}</b>
+        </div>
+
+    </td>
+
+    <td class="text-end align-middle">
+        <strong>₹${lineTotal.toFixed(2)}</strong>
+    </td>
+
+</tr>
+`;
+
     });
 
     if (cart.length === 0) {
       html = "<p>No products selected</p>";
     }
-
     $("#cartItems").html(html);
     $("#grand_total").text(total.toFixed(2));
+
+
+
+
+
+    // Render GST Details
+let gstHtml = `
+<table class="table table-sm mb-0">
+    <thead>
+        <tr>
+            <th>GST</th>
+            <th class="text-end">Taxable</th>
+            <th class="text-end">GST</th>
+        </tr>
+    </thead>
+    <tbody>
+`;
+
+Object.keys(gstSummary).forEach(rate => {
+
+    gstHtml += `
+    <tr>
+        <td>${rate}%</td>
+        <td class="text-end">
+            ₹${gstSummary[rate].taxable.toFixed(2)}
+        </td>
+        <td class="text-end">
+            ₹${gstSummary[rate].gst.toFixed(2)}
+        </td>
+    </tr>
+    `;
+});
+
+gstHtml += "</tbody></table>";
+
+$("#gst_classification").html(gstHtml);
+
+
+
+
+
   }
+
+
 
   $("#searchProduct").on(
     "keyup",
@@ -378,10 +513,26 @@ ${item.quantity} × ₹${item.price}
     let html = "";
 
     products.forEach(v => {
+      var price_with_gst = parseFloat(v.b2b_price);
+      var gst_percentage = parseFloat(v.gst_rate);
+      var price_without_gst = (
+        price_with_gst / (1 + gst_percentage / 100)
+      ).toFixed(2);
+      var gst_amount = (
+        price_with_gst - price_without_gst
+      ).toFixed(2);
+
+
       variants[v.id] = {
-        price: v.b2b_price,
+        price: price_with_gst,
         name: v.product_name,
-        image: v.image
+        image: v.image,
+        gst_percentage: gst_percentage,
+        price_without_gst: price_without_gst,
+        gst_amount: gst_amount,
+        pack_size: v.pack_size,
+        pack_type: v.pack_type,
+        unit: v.product_unit,
       };
       html += `
         <div class="col-md-3 mb-3">

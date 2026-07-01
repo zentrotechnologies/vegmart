@@ -13,12 +13,15 @@ urlpatterns = [
         path('cancelorder', cancelorder.as_view()),
         path('deliverorder', deliverorder.as_view()),
         path('order_list_pagination_api', order_list_pagination_api.as_view()),
+        path('production-ready', production_ready.as_view()),
+        path('dispatch-ready', dispatch_ready.as_view()),
 
         # payment
         path('addpayment', addpayment.as_view()),
         path('deleteorder', deleteorder.as_view()),
 
 
+        path('check_stock_availablity', check_stock_availablity.as_view()),
 
 
 ]

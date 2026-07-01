@@ -15,15 +15,13 @@ from django.conf import settings
 # 8	Delivered
 class Order(TrackingModel):
     customer_id = models.CharField(max_length=20)
-
     payment_mode = models.CharField(max_length=50)  # cash / credit / online
-
     total_amount = models.FloatField()
+    taxable_amount = models.FloatField()
+    gst_amount = models.FloatField()
     paid_amount = models.FloatField(default=0)
     credit_amount = models.FloatField(default=0)
-
     due_date = models.DateField(null=True, blank=True)
-
     status = models.CharField(max_length=20, default='pending')
 
 class OrderItem(TrackingModel):
@@ -32,6 +30,10 @@ class OrderItem(TrackingModel):
     product = models.CharField(max_length=20,)
     quantity = models.IntegerField()
     price = models.FloatField()
+    gst_percentage = models.FloatField()
+    price_without_gst = models.FloatField()
+    total = models.FloatField()
+    gst_amount = models.FloatField()
 
 class CustomerPricing(TrackingModel):
     customer_id = models.CharField(max_length=20)

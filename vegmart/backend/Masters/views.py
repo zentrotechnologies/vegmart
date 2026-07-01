@@ -331,6 +331,20 @@ class procurementreadyproductlist(GenericAPIView):
             "data": serializer.data,
             "response": {"n": 1, "msg": "Product list", "status": "success"}
         })
+        
+class productionreadyproductlist(GenericAPIView):
+    def get(self, request):
+        product_ids=list(ProductVariant.objects.filter(isActive=True).order_by('product').distinct('product').values_list('product',flat=True))
+        
+        objs = Product.objects.filter(id__in=product_ids,isActive=True).order_by('id')
+        serializer = CustomProductSerializer(objs, many=True)
+
+        return Response({
+            "data": serializer.data,
+            "response": {"n": 1, "msg": "Product list", "status": "success"}
+        })
+        
+        
 class product_list_pagination_api(GenericAPIView):
     pagination_class = CustomPagination
 

@@ -52,17 +52,6 @@ class RecipeRawmaterial(TrackingModel):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 class ProcurementEntry(TrackingModel):
     supplier_id = models.CharField(max_length=20)
     order_id = models.CharField(max_length=20, null=True, blank=True)
@@ -81,9 +70,6 @@ class ProcurementRawmaterial(TrackingModel):
     rate = models.FloatField(default=0)
     total = models.FloatField(default=0)
 
-
-
-
 class ProcurementOutput(TrackingModel):
     recipe_id = models.CharField(max_length=20)
     procurement = models.CharField(max_length=20)
@@ -91,7 +77,6 @@ class ProcurementOutput(TrackingModel):
     quantity = models.FloatField()
     unit = models.CharField(max_length=20)
     is_primary_output = models.BooleanField(default=True)
-
 
 class ProcurementProducts(TrackingModel):
     procurement = models.CharField(max_length=20)

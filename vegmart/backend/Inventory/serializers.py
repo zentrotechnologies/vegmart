@@ -25,6 +25,8 @@ class InventorySerializer(serializers.ModelSerializer):
         fields='__all__'
 
 class CustomInventorySerializer(serializers.ModelSerializer):
+    
+    
     stock_name = serializers.SerializerMethodField()
     def get_stock_name(self, obj):
         obj_id = obj.stock_id
@@ -35,6 +37,13 @@ class CustomInventorySerializer(serializers.ModelSerializer):
                     obj = RawProductMaster.objects.filter(id=obj_id).first()
                     if obj is not None:
                         return obj.name
+                    else:
+                        return None
+                elif obj.inventory_type =='finished':
+                    obj = Product.objects.filter(id=obj_id).first()
+                    if obj is not None:
+                        ser=CustomProductSerializer(obj)
+                        return ser.data['name']
                     else:
                         return None
                 else:

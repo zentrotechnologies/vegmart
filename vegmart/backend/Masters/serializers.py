@@ -105,7 +105,22 @@ class CustomProductVariantSerializer(serializers.ModelSerializer):
             except Product.DoesNotExist:
                 return None
         return None
-
+    product_unit_id = serializers.SerializerMethodField()
+    def get_product_unit_id(self, obj):
+        obj_id = obj.product
+        if obj_id is not None and obj_id !='' and obj_id !='None':
+            try:
+                obj = Product.objects.filter(id=obj_id).first()
+                if obj is not None:
+                    if obj.unit is not None:
+                        return obj.unit
+                    else:
+                        return None
+                else:
+                    return None
+            except Product.DoesNotExist:
+                return None
+        return None
 
     class Meta:
         model= ProductVariant
