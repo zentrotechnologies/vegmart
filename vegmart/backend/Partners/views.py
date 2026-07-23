@@ -19,7 +19,7 @@ from django.db.models import Q
 class addvendor(GenericAPIView):
     def post(self, request):
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'phone': request.data.get('phone'),
             'address': request.data.get('address'),
         }
@@ -77,7 +77,7 @@ class vendorupdate(GenericAPIView):
             return Response({"data": '', "response": {"n": 0, "msg": "Vendor not found", "status": "error"}})
 
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'phone': request.data.get('phone'),
             'address': request.data.get('address'),
         }
@@ -120,7 +120,7 @@ class vendordelete(GenericAPIView):
 class adddeliveryagent(GenericAPIView):
     def post(self, request):
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'phone': request.data.get('phone'),
         }
 
@@ -176,7 +176,7 @@ class deliveryagentupdate(GenericAPIView):
             return Response({"data": '', "response": {"n": 0, "msg": "Agent not found", "status": "error"}})
 
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'phone': request.data.get('phone'),
         }
 

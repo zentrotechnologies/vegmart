@@ -23,7 +23,7 @@ from Procurement.serializers import *
 class addcategory(GenericAPIView):
     def post(self, request):
         data = {}
-        data['name'] = str(request.data.get('name')).lower()
+        data['name'] = str(request.data.get('name'))
 
         if not data['name']:
             return Response({"data": {}, "response": {"n": 0, "msg": "Please provide category name", "status": "error"}})
@@ -73,7 +73,7 @@ class categoryupdate(GenericAPIView):
         if not obj:
             return Response({"data": '', "response": {"n": 0, "msg": "Category not found", "status": "error"}})
 
-        name = str(request.data.get('name')).lower()
+        name = str(request.data.get('name'))
 
         if not name:
             return Response({"data": {}, "response": {"n": 0, "msg": "Please provide category name", "status": "error"}})
@@ -120,8 +120,8 @@ class categorydelete(GenericAPIView):
 class addsubcategory(GenericAPIView):
     def post(self, request):
         data = {}
-        data['name'] = str(request.data.get('name')).lower()
-        data['category'] = str(request.data.get('category')).lower()
+        data['name'] = str(request.data.get('name'))
+        data['category'] = str(request.data.get('category'))
 
         if not data['name'] or not data['category']:
             return Response({"data": {}, "response": {"n": 0, "msg": "Name & category required", "status": "error"}})
@@ -193,8 +193,8 @@ class subcategoryupdate(GenericAPIView):
             return Response({"data": '', "response": {"n": 0, "msg": "Not found", "status": "error"}})
 
         data = {
-            'name': str(request.data.get('name')).lower(),
-            'category': str(request.data.get('category')).lower()
+            'name': str(request.data.get('name')),
+            'category': str(request.data.get('category'))
         }
 
         serializer = SubCategorySerializer(obj, data=data, partial=True)
@@ -240,13 +240,13 @@ class addproduct(GenericAPIView):
         # 🔹 PRODUCT DATA
         print("request.data",request.data)
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'sku': str(request.data.get('sku')).upper(),
             'hsn_code': request.data.get('hsn_code'),
-            'category': str(request.data.get('category')).lower(),
-            'sub_category': str(request.data.get('sub_category')).lower(),
-            'unit': str(request.data.get('unit')).lower(),
-            'brand': str(request.data.get('brand')).lower()
+            'category': str(request.data.get('category')),
+            'sub_category': str(request.data.get('sub_category')),
+            'unit': str(request.data.get('unit')),
+            'brand': str(request.data.get('brand'))
         }
 
         # 🔹 VALIDATION
@@ -380,13 +380,13 @@ class productupdate(GenericAPIView):
 
         # 🔹 PRODUCT DATA
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'sku': str(request.data.get('sku')).upper(),
             'hsn_code': request.data.get('hsn_code'),
-            'category': str(request.data.get('category')).lower(),
-            'sub_category': str(request.data.get('sub_category')).lower(),
-            'unit': str(request.data.get('unit')).lower(),
-            'brand': str(request.data.get('brand')).lower()
+            'category': str(request.data.get('category')),
+            'sub_category': str(request.data.get('sub_category')),
+            'unit': str(request.data.get('unit')),
+            'brand': str(request.data.get('brand'))
         }
 
         # 🔹 SKU CHECK
@@ -500,7 +500,7 @@ class productdelete(GenericAPIView):
 class addproductvariant(GenericAPIView):
     def post(self, request):
         data = {
-            'product': str(request.data.get('product')).lower(),
+            'product': str(request.data.get('product')),
             'pack_size': request.data.get('pack_size'),
             'pack_type': request.data.get('pack_type'),
             'fat': request.data.get('fat'),

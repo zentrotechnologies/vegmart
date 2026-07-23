@@ -131,7 +131,8 @@
                         </table>
                     </div>
                     <i>All stocks are available no need to procure.</i>
-                    <button class="btn btn-primary my-2" onclick="markreadyforproduction()">Mark Ready Production</button>
+                    <button class="btn btn-primary my-2" onclick="markreadyforproduction()">Mark Ready
+                        Production</button>
                 </div>
 
             </div>
@@ -240,7 +241,7 @@
          `: ``}
 
         ${`{{role_id}}` == 4 ? `
-            ${o.status == 'production-ready'? ` 
+            ${o.status == 'production-ready' ? ` 
                 <button class="btn btn-success btn-sm" onclick="checkStockavAilablity(${o.id})" title="Mark Dispatch Ready">Dispatch Ready</button>
             `: ``}
          `: ``}
@@ -281,43 +282,48 @@
             }
         });
     }
-function checkStockavAilablity(order_id) {
+    function checkStockavAilablity(order_id) {
 
-    $.post(
-        hosturl + "/api/Orders/check_stock_availablity",
-        {
-            csrfmiddlewaretoken: '{{csrf_token}}',
-            order_id: order_id
-        },
-        function (res) {
+        $.post(
+            hosturl + "/api/Orders/check_stock_availablity",
+            {
+                csrfmiddlewaretoken: '{{csrf_token}}',
+                order_id: order_id
+            },
+            function (res) {
 
-            if (res.data.production_required) {
+                if (res.data.production_required) {
 
-                swal({
-                    title: "Stock Not Available",
-                    text: "Some products are not available in inventory. Please create a production order to replenish the stock.",
-                    icon: "warning"
-                }).then(() => {
-                    window.location.href = "/production/order-production/" + order_id;
-                });
+                    swal({
+                        title: "Stock Not Available",
+                        text: "Some products are not available in inventory. Please create a production order to replenish the stock.",
+                        icon: "warning"
+                    }).then(() => {
+                        window.location.href = "/production/order-production/" + order_id;
+                    });
 
-            } else {
-                swal({
-                    text: "Are You Sure You Want Mark This Order As Ready For Dispatch.",
-                    icon: "info"
-                }).then(() => {
-                    markreadyfordispatch(order_id);
-                });
-                
+                } else {
+
+                    swal({
+                        title: "Are you sure?",
+                        text: "You Want Mark This Order As Ready For Dispatch.",
+                        icon: "warning",
+                        buttons: true
+                    }).then((ok) => {
+                        if (ok) {
+                            markreadyfordispatch(order_id);
+                        }
+                    });
+
+
+                }
 
             }
+        );
 
-        }
-    );
-
-}
+    }
     function checkRequirement(order_id) {
-        
+
         $.post(hosturl + "/api/Procurement/requirement_by_order",
             {
                 csrfmiddlewaretoken: '{{csrf_token}}',
@@ -326,32 +332,32 @@ function checkStockavAilablity(order_id) {
 
             function (res) {
 
-                    let html = "";
+                let html = "";
 
-                    res.data.products.forEach(p => {
-                        let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
-                        if (p.mapping_exist) {
-                            html += `
+                res.data.products.forEach(p => {
+                    let color = p.required_qty > 0 ? 'text-danger' : 'text-success';
+                    if (p.mapping_exist) {
+                        html += `
                             <tr>
                                 <td class="product" data-product="${p.product_id}" data-unit="${p.product_unit}">${p.product_name} ${p.pack_size} ${p.product_unit_name}</td>
                                 <td>${p.ordered_qty}</td>
                                 <td>${p.available_stock}</td>
                                 <td class="${color} requiredqty" data-requiredqty="${p.required_qty}">${p.required_qty}</td>
                             </tr>`;
-                        } else {
-                            html += `
+                    } else {
+                        html += `
                             <tr>
                                 <td><div><strike>${p.product_name} ${p.pack_size} ${p.product_unit_name}</strike></div><div class="text-danger"><small>Recipe Items Not Mapped</small></div></td>
                                 <td><strike>${p.ordered_qty}</strike></td>
                                 <td><strike>${p.available_stock}</strike></td>
                                 <td><strike>${p.required_qty}</strike></td>
                             </tr>`;
-                        }
-                    });
+                    }
+                });
 
 
 
-                    debugger
+                debugger
                 if (!res.data?.procurement_items || res.data.procurement_items.length === 0) {
                     $('#not_required_to_procure').removeClass('d-none')
                     $('#required_to_procure').addClass('d-none')
@@ -380,7 +386,7 @@ function checkStockavAilablity(order_id) {
                         </tr>`;
                     });
                     $("#procurement_body").html(procurement_html);
-                    
+
                 }
                 $("#procure_order_id").val(order_id);
                 $("#requirementModal").modal('show');
@@ -415,27 +421,75 @@ function checkStockavAilablity(order_id) {
     // =====================================================
 
     function confirmOrder(id) {
-        actionOrder(id, "confirmorder", "Order Confirmed");
+        swal({
+            title: "Are you sure?",
+            text: "You Want To Confirm Order.",
+            icon: "warning",
+            buttons: true
+        }).then((ok) => {
+            if (ok) {
+                actionOrder(id, "confirmorder", "Order Confirmed");
+            }
+        });
     }
 
     function cancelOrder(id) {
-        actionOrder(id, "cancelorder", "Order Cancelled");
+        swal({
+            title: "Are you sure?",
+            text: "You Want To Cancel Order.",
+            icon: "warning",
+            buttons: true
+        }).then((ok) => {
+            if (ok) {
+                actionOrder(id, "cancelorder", "Order Cancelled");
+            }
+        });
     }
 
     function deliverOrder(id) {
-        actionOrder(id, "deliverorder", "Order Delivered");
+
+        swal({
+            title: "Are you sure?",
+            text: "You want to change status to deliver",
+            icon: "warning",
+            buttons: true
+        }).then((ok) => {
+            if (ok) {
+
+                actionOrder(id, "deliverorder", "Order Delivered");
+            }
+        });
     }
     function dispatchOrder(id) {
-        actionOrder(id, "dispatchorder", "Order Delivered");
+        swal({
+            title: "Are you sure?",
+            text: "You want to  dispatch order",
+            icon: "warning",
+            buttons: true
+        }).then((ok) => {
+            if (ok) {
+
+                actionOrder(id, "dispatchorder", "Order Delivered");
+            }
+        })
     }
     function markreadyforproduction() {
-        let id=$("#procure_order_id").val()
+        let id = $("#procure_order_id").val()
         actionOrder(id, "production-ready", "Order Ready for Production");
         $("#requirementModal").modal('hide');
 
     }
     function markreadyfordispatch(id) {
-        actionOrder(id, "dispatch-ready", "Order Ready for dispatch");
+        swal({
+            title: "Are you sure?",
+            text: "You want to change status to dispatch-ready",
+            icon: "warning",
+            buttons: true
+        }).then((ok) => {
+            if (ok) {
+                actionOrder(id, "dispatch-ready", "Order Ready for dispatch");
+            }
+        });
     }
     function actionOrder(id, api, msg) {
 

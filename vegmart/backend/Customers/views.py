@@ -19,7 +19,7 @@ from django.db.models import Q
 class addcustomer(GenericAPIView):
     def post(self, request):
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'mobile': request.data.get('mobile'),
             'address_line1': request.data.get('address_line1'),
             'address_line2': request.data.get('address_line2'),
@@ -86,7 +86,7 @@ class customerupdate(GenericAPIView):
             return Response({"data": '', "response": {"n": 0, "msg": "Customer not found", "status": "error"}})
 
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'mobile': request.data.get('mobile'),
             'address_line1': request.data.get('address_line1'),
             'address_line2': request.data.get('address_line2'),

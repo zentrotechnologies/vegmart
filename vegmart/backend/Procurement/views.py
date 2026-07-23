@@ -316,7 +316,7 @@ class addrawproductmaster(GenericAPIView):
 
         data = {
             'item_code': str(request.data.get('item_code')).upper(),
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'category': request.data.get('category'),
             'unit': request.data.get('unit'),
             'is_milk': request.data.get('is_milk') == 'true'
@@ -401,7 +401,7 @@ class rawproductmasterupdate(GenericAPIView):
 
         data = {
             'item_code': str(request.data.get('item_code')).upper(),
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'category': request.data.get('category'),
             'unit': request.data.get('unit'),
             'is_milk': request.data.get('is_milk') == 'true'
