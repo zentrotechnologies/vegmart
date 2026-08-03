@@ -370,12 +370,11 @@ class dispatch_ready(GenericAPIView):
         order.save()
 
         return Response({"response": {"n": 1, "msg": "Order Ready For dispatch"}})
+    
+    
 class deliverorder(GenericAPIView):
-
     def post(self, request):
-
         order_id = request.data.get('order_id')
-
         order = Order.objects.filter(id=order_id).first()
         order.status = 'delivered'
         order.save()

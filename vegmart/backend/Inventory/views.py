@@ -19,7 +19,7 @@ from django.db.models import Q
 class addwarehouse(GenericAPIView):
     def post(self, request):
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'location': request.data.get('location'),
         }
 
@@ -74,7 +74,7 @@ class warehouseupdate(GenericAPIView):
             return Response({"data": '', "response": {"n": 0, "msg": "Warehouse not found", "status": "error"}})
 
         data = {
-            'name': str(request.data.get('name')).lower(),
+            'name': str(request.data.get('name')),
             'location': request.data.get('location'),
         }
 

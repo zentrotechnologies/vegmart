@@ -32,7 +32,7 @@
           <h4 class="mb-1">Welcome to VegMart! 👋🏻</h4>
           <p class="mb-5">Please sign-in to your account and start the adventure</p>
 
-          <form  class="mb-5">
+          <form class="mb-5">
             {% csrf_token %}
             <div class="form-floating form-floating-outline mb-5">
               <input type="text" class="form-control" id="email" name="email-username"
@@ -91,31 +91,37 @@
 {{block.super}}
 
 <script>
-  
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        validation();
+    }
+});
   function validation() {
     var email = $("#email").val().trim();
     var password = $("#password").val().trim();
+    var remember_me = $("#remember-me").is(":checked");
 
 
     if (IsValid(email)) {
       swal({
-            icon: "error",
-            title: "",
-            text: "Please enter valid email or username",
+        icon: "error",
+        title: "",
+        text: "Please enter valid email or username",
 
-          });
-          
+      });
+
       $("#email").focus();
       return false;
     }
     if (IsValid(password)) {
       // console.log("password is required")
       swal({
-            icon: "error",
-            title: "",
-            text: "Please enter valid password",
+        icon: "error",
+        title: "",
+        text: "Please enter valid password",
 
-          });
+      });
       $("#password").focus();
       return false;
     }
@@ -126,6 +132,7 @@
       formData.append('email', email);
       formData.append('password', password);
 
+      formData.append("remember_me", remember_me);
 
       $.ajax({
         url: hosturl + "",

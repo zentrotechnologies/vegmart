@@ -23,6 +23,7 @@ def login(request):
     if request.method == 'POST':
         email = request.POST['email']
         password = request.POST['password']
+        remember_me = request.POST.get("remember_me") == "true"
         data = {}
         data['email'] = email
         data['password'] = password
@@ -38,6 +39,14 @@ def login(request):
             request.session['role_name'] = login_response['data']['role_name']  
             request.session['user_name'] = login_response['data']['username']  
             request.session['menuitems'] = login_response['data']['menuitems']  
+            
+            if remember_me:
+                # Keep login for 30 days
+                request.session.set_expiry(60 * 60 * 24 * 30)
+            else:
+                # Logout when browser closes
+                request.session.set_expiry(0)
+            
             return HttpResponse(json.dumps(login_response),content_type='application/json')
         else:
             # messages.error(request, login_response['response']['msg'])
