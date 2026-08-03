@@ -36,6 +36,7 @@ urlpatterns = [
 
     path('userdeleteundo', userdeleteundo.as_view(), name = 'userdeleteundo'),
     path('userbyid', userbyid.as_view(), name = 'userbyid'),
+    path('admin_dashboard', admin_dashboard.as_view(), name = 'admin_dashboard'),
 
 
 ]

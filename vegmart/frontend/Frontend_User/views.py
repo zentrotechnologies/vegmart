@@ -105,6 +105,48 @@ def dashboard(request):
             return HttpResponse(json.dumps(forgot_password_response),content_type='application/json')
     else:
         if request.session.get('role_id') == 1:
+
+
+            # month_total_order_value=0
+            # month_total_order_value_diff=0
+            # todays_total_sale_value=0
+            # todays_total_sale_value_diff=0
+            # inventory_value=0
+            # pending_deliveries=0
+            # monthly_sales_trend=[]
+            # product_category_distribution=[]
+            # recent_5_orders=[]
+            # low_stocks=[]
+            # admin_dashboard_url=hosturl+"/api/User/admin_dashboard"
+            # admin_dashboard_request = requests.post(admin_dashboard_url, data={})
+            # admin_dashboard_response = admin_dashboard_request.json()
+
+            # if admin_dashboard_response['response']['n'] == 1:
+            #     month_total_order_value=admin_dashboard_response['response']["data"]["month_total_order_value"]
+            #     month_total_order_value_diff=admin_dashboard_response['response']["data"]["month_total_order_value_diff"]
+            #     todays_total_sale_value=admin_dashboard_response['response']["data"]["todays_total_sale_value"]
+            #     todays_total_sale_value_diff=admin_dashboard_response['response']["data"]["todays_total_sale_value_diff"]
+            #     inventory_value=admin_dashboard_response['response']["data"]["inventory_value"]
+            #     pending_deliveries=admin_dashboard_response['response']["data"]["pending_deliveries"]
+            #     monthly_sales_trend=admin_dashboard_response['response']["data"]["monthly_sales_trend"]
+            #     product_category_distribution=admin_dashboard_response['response']["data"]["product_category_distribution"]
+            #     recent_5_orders=admin_dashboard_response['response']["data"]["recent_5_orders"]
+            #     low_stocks=admin_dashboard_response['response']["data"]["low_stocks"]
+
+
+            # context={
+            #     "month_total_order_value":month_total_order_value,
+            #     "month_total_order_value_diff":month_total_order_value_diff,
+            #     "todays_total_sale_value":todays_total_sale_value,
+            #     "todays_total_sale_value_diff":todays_total_sale_value_diff,
+            #     "inventory_value":inventory_value,
+            #     "pending_deliveries":pending_deliveries,
+            #     "monthly_sales_trend":monthly_sales_trend,
+            #     "product_category_distribution":product_category_distribution,
+            #     "recent_5_orders":recent_5_orders,
+            #     "low_stocks":low_stocks,
+            # }
+
             return render(request, 'Dashboard/admin_dashboard_analytics.html')
         elif request.session.get('role_id') == 3:
             return render(request, 'Dashboard/procurement_dashboard_analytics.html')

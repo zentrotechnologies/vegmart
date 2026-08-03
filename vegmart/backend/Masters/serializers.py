@@ -93,9 +93,12 @@ class CustomProductVariantSerializer(serializers.ModelSerializer):
                 obj = Product.objects.filter(id=obj_id).first()
                 if obj is not None:
                     if obj.unit is not None:
-                        unit_obj=UnitMaster.objects.filter(id=obj.unit).first()
-                        if unit_obj is not None:
-                            return unit_obj.short_name
+                        if obj.unit is not None and obj.unit !='' and obj.unit !='null':
+                            unit_obj=UnitMaster.objects.filter(id=obj.unit).first()
+                            if unit_obj is not None:
+                                return unit_obj.short_name
+                            else:
+                                return None
                         else:
                             return None
                     else:

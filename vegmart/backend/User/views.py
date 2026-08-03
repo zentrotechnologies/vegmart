@@ -20,15 +20,19 @@ import random
 from django.core.mail import send_mail
 from django.utils.timezone import make_aware
 from django.utils import timezone
-from django.db.models import F, FloatField, ExpressionWrapper,Q
-from django.db.models.functions import Radians, Power, Sin, Cos, ATan2, Sqrt
+from django.db.models import F, FloatField, ExpressionWrapper,Q,Count
+from django.db.models.functions import Radians, Power, Sin, Cos, ATan2, Sqrt,Coalesce, TruncMonth,Cast
+
 import math
 from helpers.validations import hosturl
 from helpers.custom_functions import *
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
+from Orders.models import *
+from Orders.serializers import *
 
-
+from Inventory.models import *
+from Inventory.serializers import *
 
 
 def createtoken(uuid,email,source):
@@ -760,4 +764,480 @@ class getmappingusers(GenericAPIView):
             'data':context
         }
         return Response(response_,status=200)
+
     
+
+
+
+# class admin_dashboard(GenericAPIView):
+#     authentication_classes=[userJWTAuthentication]
+#     permission_classes = (permissions.IsAuthenticated,)
+#     def post(self,request):
+#         month_total_order_value=0
+#         month_total_order_value_diff=0
+#         todays_total_sale_value=0
+#         todays_total_sale_value_diff=0
+#         inventory_value=0
+#         pending_deliveries=0
+#         monthly_sales_trend=[]
+#         product_category_distribution=[]
+#         recent_5_orders=[]
+#         low_stocks=[]
+#         todays_date=date.now()
+#         current_month=date.now().month()
+#         previous_month=date.now().month()
+#         last_6_months=[]
+#         inventory_base_query=Inventory.objects.filter(isActive=True,inventory_type="finished")
+#         order_base_query=Order.objects.filter(isActive=True)
+#         product_base_query=Product.objects.filter(isActive=True)
+
+
+#         context={
+#                 "month_total_order_value":month_total_order_value,
+#                 "month_total_order_value_diff":month_total_order_value_diff,
+#                 "todays_total_sale_value":todays_total_sale_value,
+#                 "todays_total_sale_value_diff":todays_total_sale_value_diff,
+#                 "inventory_value":inventory_value,
+#                 "pending_deliveries":pending_deliveries,
+#                 "monthly_sales_trend":monthly_sales_trend,
+#                 "product_category_distribution":product_category_distribution,
+#                 "recent_5_orders":recent_5_orders,
+#                 "low_stocks":low_stocks,
+#             }
+
+
+        
+#         return Response({"data":context,"response": {"n": 1, "msg": "User shown successfully","status": "success"}})
+
+from datetime import timedelta
+from decimal import Decimal
+
+from django.db.models import (
+    Sum,
+    F,
+    Value,
+    DecimalField,
+    ExpressionWrapper,
+)
+from django.utils import timezone
+class admin_dashboard(GenericAPIView):
+    authentication_classes = [userJWTAuthentication]
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @staticmethod
+    def calculate_percentage_difference(current_value, previous_value):
+        current_value = Decimal(str(current_value or 0))
+        previous_value = Decimal(str(previous_value or 0))
+
+        if previous_value == 0:
+            return 100.0 if current_value > 0 else 0.0
+
+        difference = (
+            (current_value - previous_value) / previous_value
+        ) * Decimal("100")
+
+        return round(float(difference), 2)
+
+    @staticmethod
+    def get_previous_month(month_start):
+        previous_month_last_date = month_start - timedelta(days=1)
+        return previous_month_last_date.replace(day=1)
+
+    @staticmethod
+    def get_last_six_months(current_month_start):
+        months = []
+        month_date = current_month_start
+
+        for _ in range(6):
+            months.append(month_date)
+            previous_month_last_date = month_date - timedelta(days=1)
+            month_date = previous_month_last_date.replace(day=1)
+
+        return list(reversed(months))
+
+    @staticmethod
+    def safe_float(value):
+        try:
+            return float(value or 0)
+        except (TypeError, ValueError, InvalidOperation):
+            return 0.0
+
+    def post(self, request):
+        try:
+            today = timezone.localdate()
+            tomorrow = today + timedelta(days=1)
+            yesterday = today - timedelta(days=1)
+
+            current_month_start = today.replace(day=1)
+            previous_month_start = self.get_previous_month(current_month_start)
+
+            inventory_base_query = Inventory.objects.filter(
+                isActive=True,
+                inventory_type="finished",
+            )
+
+            order_base_query = Order.objects.filter(isActive=True)
+
+            # Products having at least one active variant.
+            # ProductVariant.product is treated as a stored Product primary-key value.
+            valid_product_ids = list(
+                ProductVariant.objects.filter(isActive=True)
+                .values_list("product", flat=True)
+                .distinct()
+            )
+            print("valid_product_ids",valid_product_ids)
+            product_base_query = Product.objects.filter(
+                isActive=True,
+                pk__in=valid_product_ids,
+            )
+
+            money_output = DecimalField(max_digits=18, decimal_places=2)
+            zero_money = Value(
+                Decimal("0.00"),
+                output_field=money_output,
+            )
+
+            # 1. Current-month order value
+            month_total_order_value = order_base_query.filter(
+                createdAt__date__gte=current_month_start,
+                createdAt__date__lt=tomorrow,
+            ).aggregate(
+                total=Coalesce(
+                    Cast(Sum("total_amount"), money_output),
+                    zero_money,
+                )
+            )["total"]
+
+            # 2. Previous-month order value
+            previous_month_total_order_value = order_base_query.filter(
+                createdAt__date__gte=previous_month_start,
+                createdAt__date__lt=current_month_start,
+            ).aggregate(
+                total=Coalesce(
+                    Cast(Sum("total_amount"), money_output),
+                    zero_money,
+                )
+            )["total"]
+
+            month_total_order_value_diff = self.calculate_percentage_difference(
+                month_total_order_value,
+                previous_month_total_order_value,
+            )
+
+            # 3. Today's sales
+            todays_total_sale_value = order_base_query.filter(
+                createdAt__date=today,
+            ).aggregate(
+                total=Coalesce(
+                    Cast(Sum("total_amount"), money_output),
+                    zero_money,
+                )
+            )["total"]
+
+            # 4. Yesterday's sales
+            yesterdays_total_sale_value = order_base_query.filter(
+                createdAt__date=yesterday,
+            ).aggregate(
+                total=Coalesce(
+                    Cast(Sum("total_amount"), money_output),
+                    zero_money,
+                )
+            )["total"]
+
+            todays_total_sale_value_diff = self.calculate_percentage_difference(
+                todays_total_sale_value,
+                yesterdays_total_sale_value,
+            )
+
+            # 5. Inventory value: quantity × unit_cost.
+            # unit_cost is currently a CharField, so it must be cast.
+            inventory_value_expression = ExpressionWrapper(
+                Cast(F("quantity"), money_output)
+                * Cast(F("unit_cost"), money_output),
+                output_field=money_output,
+            )
+
+            inventory_value = inventory_base_query.aggregate(
+                total=Coalesce(
+                    Sum(inventory_value_expression),
+                    zero_money,
+                )
+            )["total"]
+
+            # 6. Pending deliveries
+            pending_deliveries = order_base_query.exclude(
+                status__iexact="delivered"
+            ).count()
+
+            # 7. Monthly sales trend for last six months
+            last_six_month_dates = self.get_last_six_months(
+                current_month_start
+            )
+            sales_start_date = last_six_month_dates[0]
+
+            monthly_sales_queryset = (
+                order_base_query.filter(
+                    createdAt__date__gte=sales_start_date,
+                    createdAt__date__lt=tomorrow,
+                )
+                .annotate(month=TruncMonth("createdAt"))
+                .values("month")
+                .annotate(
+                    total_sales=Coalesce(
+                        Cast(Sum("total_amount"), money_output),
+                        zero_money,
+                    ),
+                    total_orders=Count("pk"),
+                )
+                .order_by("month")
+            )
+
+            sales_by_month = {
+                item["month"].date().replace(day=1): item
+                for item in monthly_sales_queryset
+                if item["month"]
+            }
+
+            monthly_sales_trend = []
+            for month_date in last_six_month_dates:
+                month_data = sales_by_month.get(month_date)
+
+                monthly_sales_trend.append(
+                    {
+                        "month": month_date.strftime("%b %Y"),
+                        "month_number": month_date.month,
+                        "year": month_date.year,
+                        "total_sales": self.safe_float(
+                            month_data["total_sales"] if month_data else 0
+                        ),
+                        "total_orders": (
+                            month_data["total_orders"] if month_data else 0
+                        ),
+                    }
+                )
+
+            # 8. Product category distribution
+            # Product.category stores Category ID as plain text/integer, not FK.
+            category_rows = list(
+                product_base_query
+                .exclude(category__isnull=True)
+                .exclude(category__exact="")
+                .values("category")
+                .annotate(product_count=Count("pk"))
+                .order_by("-product_count", "category")
+            )
+
+            category_ids = [
+                row["category"]
+                for row in category_rows
+                if row["category"] not in (None, "")
+            ]
+            print("category_ids",category_ids)
+            category_map = {
+                str(category.pk): category.name
+                for category in Category.objects.filter(
+                    isActive=True,
+                    pk__in=category_ids,
+                )
+            }
+
+            grouped_product_count = sum(
+                row["product_count"] or 0 for row in category_rows
+            )
+
+            product_category_distribution = []
+            for row in category_rows:
+                category_id = row["category"]
+                product_count = row["product_count"] or 0
+
+                product_category_distribution.append(
+                    {
+                        "category_id": category_id,
+                        "category_name": category_map.get(
+                            str(category_id),
+                            str(category_id),
+                        ),
+                        "product_count": product_count,
+                        "percentage": round(
+                            (product_count / grouped_product_count) * 100,
+                            2,
+                        ) if grouped_product_count else 0,
+                    }
+                )
+
+            # 9. Recent five orders
+            recent_5_orders = [
+                {
+                    "order_id": order.pk,
+                    "customer_id": order.customer_id,
+                    "payment_mode": order.payment_mode,
+                    "total_amount": self.safe_float(order.total_amount),
+                    "taxable_amount": self.safe_float(order.taxable_amount),
+                    "gst_amount": self.safe_float(order.gst_amount),
+                    "paid_amount": self.safe_float(order.paid_amount),
+                    "credit_amount": self.safe_float(order.credit_amount),
+                    "due_date": order.due_date,
+                    "status": order.status,
+                    "created_at": order.createdAt,
+                }
+                for order in order_base_query.order_by("-createdAt")[:5]
+            ]
+
+            # 10. Low-stock finished inventory
+            low_stock_queryset = list(
+                inventory_base_query.filter(
+                    Q(quantity__lte=0)
+                    | Q(
+                        minimum_stock__gt=0,
+                        quantity__lte=F("minimum_stock"),
+                    )
+                ).order_by("quantity")[:10]
+            )
+
+            stock_ids = {
+                str(inventory.stock_id)
+                for inventory in low_stock_queryset
+                if inventory.stock_id not in (None, "")
+            }
+
+            # Resolve stock_id robustly:
+            # 1) direct Product primary key
+            # 2) Product SKU
+            # 3) ProductVariant primary key -> Product
+            products_by_pk = {
+                str(product.pk): product
+                for product in Product.objects.filter(
+                    isActive=True,
+                    pk__in=[value for value in stock_ids if value.isdigit()],
+                )
+            }
+
+            products_by_sku = {
+                str(product.sku): product
+                for product in Product.objects.filter(
+                    isActive=True,
+                    sku__in=stock_ids,
+                )
+            }
+
+            variant_product_ids = {
+                str(variant.pk): str(variant.product)
+                for variant in ProductVariant.objects.filter(
+                    isActive=True,
+                    pk__in=[value for value in stock_ids if value.isdigit()],
+                )
+            }
+
+            linked_product_ids = {
+                product_id
+                for product_id in variant_product_ids.values()
+                if product_id
+            }
+
+            variant_products = {
+                str(product.pk): product
+                for product in Product.objects.filter(
+                    isActive=True,
+                    pk__in=linked_product_ids,
+                )
+            }
+
+            low_stocks = []
+            for inventory in low_stock_queryset:
+                stock_id = str(inventory.stock_id)
+
+                product = (
+                    products_by_pk.get(stock_id)
+                    or products_by_sku.get(stock_id)
+                )
+
+                if product is None:
+                    linked_product_id = variant_product_ids.get(stock_id)
+                    product = variant_products.get(str(linked_product_id))
+
+                available_quantity = self.safe_float(inventory.quantity)
+                minimum_stock = self.safe_float(inventory.minimum_stock)
+
+                category_name = None
+                if product and product.category not in (None, ""):
+                    category_name = category_map.get(
+                        str(product.category),
+                        str(product.category),
+                    )
+
+                low_stocks.append(
+                    {
+                        "inventory_id": inventory.pk,
+                        "stock_id": inventory.stock_id,
+                        "product_id": product.pk if product else None,
+                        "product_name": product.name if product else "Unknown Product",
+                        "sku": product.sku if product else stock_id,
+                        "category": category_name,
+                        "sub_category": product.sub_category if product else None,
+                        "brand": product.brand if product else None,
+                        "warehouse": inventory.warehouse,
+                        "batch": inventory.batch,
+                        "inventory_type": inventory.inventory_type,
+                        "available_quantity": available_quantity,
+                        "minimum_stock": minimum_stock,
+                        "unit": inventory.unit,
+                        "unit_cost": inventory.unit_cost,
+                        "stock_difference": round(
+                            available_quantity - minimum_stock,
+                            2,
+                        ),
+                        "stock_status": (
+                            "out_of_stock"
+                            if available_quantity <= 0
+                            else "low_stock"
+                        ),
+                    }
+                )
+
+            context = {
+                "month_total_order_value": self.safe_float(
+                    month_total_order_value
+                ),
+                "previous_month_total_order_value": self.safe_float(
+                    previous_month_total_order_value
+                ),
+                "month_total_order_value_diff": month_total_order_value_diff,
+                "todays_total_sale_value": self.safe_float(
+                    todays_total_sale_value
+                ),
+                "yesterdays_total_sale_value": self.safe_float(
+                    yesterdays_total_sale_value
+                ),
+                "todays_total_sale_value_diff": todays_total_sale_value_diff,
+                "inventory_value": self.safe_float(inventory_value),
+                "pending_deliveries": pending_deliveries,
+                "monthly_sales_trend": monthly_sales_trend,
+                "product_category_distribution": product_category_distribution,
+                "recent_5_orders": recent_5_orders,
+                "low_stocks": low_stocks,
+            }
+
+            return Response(
+                {
+                    "data": context,
+                    "response": {
+                        "n": 1,
+                        "msg": "Admin dashboard shown successfully",
+                        "status": "success",
+                    },
+                },
+            )
+
+        except Exception as error:
+            return Response(
+                {
+                    "data": {},
+                    "response": {
+                        "n": 0,
+                        "msg": str(error),
+                        "status": "error",
+                    },
+                },
+            )
+
+

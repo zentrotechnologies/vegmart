@@ -176,6 +176,7 @@ def add_product(request):
 
             # 🔥 get categories for dropdown
             cat_response = requests.get(get_category_list_url, headers=headers)
+            print("cat_response",cat_response.json()['data'])
             units_url = hosturl + '/api/Masters/unitlist'
             units_res = requests.get(units_url, headers=headers)
             units = units_res.json().get('data', [])

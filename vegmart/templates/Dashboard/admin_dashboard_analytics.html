@@ -23,33 +23,31 @@
   <!-- KPI Cards -->
   <div class="col-md-3">
     <div class="card p-3">
-      <small>Total Orders</small>
-      <h4>1,284</h4>
-      <span class="text-success small">+12% from last month</span>
+      <small>This Month's Order Value</small>
+      <h4 id="kpi_month_order_value">₹0</h4>
+      <span class="small" id="kpi_month_order_value_diff">--</span>
     </div>
   </div>
 
   <div class="col-md-3">
     <div class="card p-3">
-      <small>Today Sales</small>
-      <h4>₹87,420</h4>
-      <span class="text-success small">+8% from yesterday</span>
+      <small>Today's Sales</small>
+      <h4 id="kpi_today_sales">₹0</h4>
+      <span class="small" id="kpi_today_sales_diff">--</span>
     </div>
   </div>
 
   <div class="col-md-3">
     <div class="card p-3">
       <small>Inventory Value</small>
-      <h4>₹12.4L</h4>
-      <span class="text-success small">+3% increase</span>
+      <h4 id="kpi_inventory_value">₹0</h4>
     </div>
   </div>
 
   <div class="col-md-3">
     <div class="card p-3">
       <small>Pending Deliveries</small>
-      <h4>23</h4>
-      <span class="text-danger small">+5 more than yesterday</span>
+      <h4 id="kpi_pending_deliveries">0</h4>
     </div>
   </div>
 
@@ -65,27 +63,9 @@
   <div class="col-md-4">
     <div class="card p-3">
       <h6>Product Category Distribution</h6>
-
-      <div class="mb-2">Dairy Products <span class="float-end">45%</span></div>
-      <div class="progress mb-3">
-        <div class="progress-bar bg-success" style="width:45%"></div>
+      <div id="categoryDistributionContainer" style="max-height: 300px;overflow-y: auto;">
+        <div class="text-muted small">Loading...</div>
       </div>
-
-      <div class="mb-2">Agricultural <span class="float-end">30%</span></div>
-      <div class="progress mb-3">
-        <div class="progress-bar bg-primary" style="width:30%"></div>
-      </div>
-
-      <div class="mb-2">Grocery <span class="float-end">15%</span></div>
-      <div class="progress mb-3">
-        <div class="progress-bar bg-warning" style="width:15%"></div>
-      </div>
-
-      <div class="mb-2">Packaged <span class="float-end">10%</span></div>
-      <div class="progress">
-        <div class="progress-bar bg-info" style="width:10%"></div>
-      </div>
-
     </div>
   </div>
 
@@ -102,19 +82,8 @@
             <th>Status</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>ORD-1042</td>
-            <td>Green Valley Farms</td>
-            <td>₹24,500</td>
-            <td><span class="badge bg-success">Delivered</span></td>
-          </tr>
-          <tr>
-            <td>ORD-1041</td>
-            <td>Sunrise Dairy</td>
-            <td>₹18,300</td>
-            <td><span class="badge bg-warning">Processing</span></td>
-          </tr>
+        <tbody id="recent_orders_table_body">
+          <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -127,22 +96,14 @@
       <table class="table table-sm">
         <thead>
           <tr>
-            <th>Product</th>
-            <th>Category</th>
+            <th>Product / SKU</th>
+            <th>Warehouse</th>
             <th>Stock</th>
+            <th>Status</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>Full Cream Milk</td>
-            <td>Dairy</td>
-            <td class="text-danger">4 Liters</td>
-          </tr>
-          <tr>
-            <td>Organic Wheat</td>
-            <td>Agriculture</td>
-            <td class="text-danger">12 Kg</td>
-          </tr>
+        <tbody id="low_stock_table_body">
+          <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -171,115 +132,172 @@
     loadReviews(1);
   }
 
+  // ------------------- FORMAT HELPERS -------------------
+  function formatCurrency(value) {
+    const num = Number(value) || 0;
+    return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
 
+  function formatDiff(value) {
+    const num = Number(value) || 0;
+    const sign = num > 0 ? '+' : '';
+    const cssClass = num > 0 ? 'text-success' : (num < 0 ? 'text-danger' : 'text-muted');
+    return `<span class="${cssClass}">${sign}${num}% </span>`;
+  }
+
+  // ------------------- DASHBOARD DATA -------------------
+  var salesChartInstance = null;
 
   function get_dashboard_data() {
     $.ajax({
-      url: hosturl + "/api/Dashboard/dashboard_analytics_api",
+      url: hosturl + "/api/User/admin_dashboard",
       headers: { "Authorization": "Bearer {{token}}" },
-      type: 'GET',
-      // beforeSend: function () {
-      //   swal({
-      //     icon: "info",
-      //     title: "",
-      //     text: "Loading...",
-      //     buttons: false,
-      //   });
-      // },
+      type: 'POST',
       success: function (response) {
-        // swal.close()
-        // console.log('response', response)
-        animateCounter($('#unverified_service_providers_count'), response.unverified_service_providers);
+        if (!response || response.response.status !== 'success') {
+          return;
+        }
 
-        $('#total_service_providers_count').text(`${response.total_service_providers}`)
-        $('#profit_loss_statement').html(`<span class="h6 mb-0">Total ${response.profit_loss_statement}% Growth</span> 😎 this month`)
-        $('#current_month_total_plans_sales').text(`${response.current_month_total_plans_sales}`)
-        $('#current_month_cunsumer_plans_sales').text(`${response.current_month_cunsumer_plans_sales}`)
-        $('#current_month_service_provider_plans_sales').text(`${response.current_month_service_provider_plans_sales}`)
+        const data = response.data;
 
-        // Initialize the chart with the data
-        initweeklyTrendingServicesChart(response.weekly_trending_services_data);
+        // KPI Cards
+        $('#kpi_month_order_value').text(formatCurrency(data.month_total_order_value));
+        $('#kpi_month_order_value_diff').html(formatDiff(data.month_total_order_value_diff) + ' from last month');
+
+        $('#kpi_today_sales').text(formatCurrency(data.todays_total_sale_value));
+        $('#kpi_today_sales_diff').html(formatDiff(data.todays_total_sale_value_diff) + ' from yesterday');
+
+        $('#kpi_inventory_value').text(formatCurrency(data.inventory_value));
+        $('#kpi_pending_deliveries').text(data.pending_deliveries || 0);
+
+        // Sales Trend Chart
+        renderSalesTrendChart(data.monthly_sales_trend || []);
+
+        // Category Distribution
+        renderCategoryDistribution(data.product_category_distribution || []);
+
+        // Recent Orders
+        renderRecentOrders(data.recent_5_orders || []);
+
+        // Low Stock
+        renderLowStock(data.low_stocks || []);
+      },
+      error: function () {
+        $('#categoryDistributionContainer').html('<div class="text-danger small">Failed to load data</div>');
+        $('#recent_orders_table_body').html('<tr><td colspan="4" class="text-center text-danger py-3">Failed to load data</td></tr>');
+        $('#low_stock_table_body').html('<tr><td colspan="4" class="text-center text-danger py-3">Failed to load data</td></tr>');
       }
     });
   }
   // Call the function to fetch and display the dashboard data
   get_dashboard_data();
-  // Function to initialize the weekly overview chart
-  function animateCounter(element, target, duration = 2000) {
-    const start = 0;
-    const increment = target / (duration / 16); // 16ms is roughly 1 frame at 60fps
-    let current = start;
 
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        clearInterval(timer);
-        current = target;
-      }
-      element.text(Math.floor(current));
-    }, 10);
-  }
-
-  function initweeklyTrendingServicesChart(response) {
-    const chartData = Array.isArray(response)
-      ? response
-      : [0, 0, 0, 0, 0, 0, 0]; // fallback to safe array
+  function renderSalesTrendChart(monthlyTrend) {
+    const categories = monthlyTrend.map(m => m.month);
+    const salesData = monthlyTrend.map(m => m.total_sales);
 
     const options = {
-      chart: {
-        type: 'line',
-        height: 300,
-        toolbar: { show: false }
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 3
-      },
-      colors: ['#7367F0'],
+      chart: { type: 'bar', height: 300, toolbar: { show: false } },
       series: [{
-        name: 'Weekly Overview',
-        data: chartData
+        name: 'Sales',
+        data: salesData
       }],
       xaxis: {
-        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        labels: {
-          style: { colors: '#888' }
-        }
+        categories: categories,
+        labels: { style: { colors: '#888' } }
       },
       yaxis: {
-        labels: {
-          style: { colors: '#888' }
-        }
+        labels: { style: { colors: '#888' } }
       },
-      grid: {
-        borderColor: '#f1f1f1'
-      },
-      tooltip: {
-        theme: 'dark'
-      }
+      grid: { borderColor: '#f1f1f1' },
+      tooltip: { theme: 'dark' },
+      colors: ['#009389']
     };
 
-    const chartElement = document.querySelector("#weeklyTrendingServicesChart");
+    const chartElement = document.querySelector("#salesChart");
     if (chartElement) {
-      const chart = new ApexCharts(chartElement, options);
-      chart.render();
+      if (salesChartInstance) {
+        salesChartInstance.updateOptions(options);
+      } else {
+        salesChartInstance = new ApexCharts(chartElement, options);
+        salesChartInstance.render();
+      }
     }
   }
 
+  function renderCategoryDistribution(categories) {
+    const colors = ['bg-success', 'bg-primary', 'bg-warning', 'bg-info', 'bg-danger', 'bg-secondary'];
 
-var options = {
-  chart: { type: 'bar', height: 300 },
-  series: [{
-    name: 'Sales',
-    data: [40000, 35000, 60000, 45000, 70000, 65000, 80000]
-  }],
-  xaxis: {
-    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
-  },
-  colors: ['#009389']
-};
+    if (!categories.length) {
+      $('#categoryDistributionContainer').html('<div class="text-muted small">No category data available</div>');
+      return;
+    }
 
-new ApexCharts(document.querySelector("#salesChart"), options).render();
+    let html = '';
+    categories.forEach(function (cat, i) {
+      const colorClass = colors[i % colors.length];
+      html += `
+        <div class="mb-2">${cat.category_name || 'Uncategorized'} (${cat.product_count})<span class="float-end">${cat.percentage}%</span></div>
+        <div class="progress mb-3">
+          <div class="progress-bar ${colorClass}" style="width:${cat.percentage}%"></div>
+        </div>`;
+    });
+    $('#categoryDistributionContainer').html(html);
+  }
+
+  function renderRecentOrders(orders) {
+    if (!orders.length) {
+      $('#recent_orders_table_body').html('<tr><td colspan="4" class="text-center text-muted py-3">No recent orders</td></tr>');
+      return;
+    }
+
+    const statusColors = {
+      delivered: 'bg-success',
+      processing: 'bg-warning',
+      pending: 'bg-secondary',
+      cancelled: 'bg-danger'
+    };
+
+    let rows = '';
+    orders.forEach(function (o) {
+      const badgeClass = statusColors[(o.status || '').toLowerCase()] || 'bg-secondary';
+      rows += `
+        <tr>
+          <td>ORD-${o.order_id}</td>
+          <td>Customer #${o.customer_id}</td>
+          <td>${formatCurrency(o.total_amount)}</td>
+          <td><span class="badge ${badgeClass} text-capitalize">${o.status}</span></td>
+        </tr>`;
+    });
+    $('#recent_orders_table_body').html(rows);
+  }
+
+  function renderLowStock(items) {
+    if (!items.length) {
+      $('#low_stock_table_body').html('<tr><td colspan="4" class="text-center text-muted py-3">No low stock items</td></tr>');
+      return;
+    }
+
+    const statusColors = {
+      out_of_stock: 'text-danger',
+      low_stock: 'text-warning',
+      in_stock: 'text-success'
+    };
+
+    let rows = '';
+    items.forEach(function (item) {
+      const stockClass = statusColors[item.stock_status] || 'text-muted';
+      const label = (item.stock_status || '').replace(/_/g, ' ');
+      rows += `
+        <tr>
+          <td>${item.product_name || ('SKU ' + item.sku)}</td>
+          <td>${item.warehouse || '-'}</td>
+          <td class="${stockClass}">${item.available_quantity} ${item.unit || ''} <small class="text-muted">(min ${item.minimum_stock})</small></td>
+          <td><span class="badge ${stockClass === 'text-danger' ? 'bg-danger' : (stockClass === 'text-warning' ? 'bg-warning' : 'bg-success')} text-capitalize">${label}</span></td>
+        </tr>`;
+    });
+    $('#low_stock_table_body').html(rows);
+  }
 
   function loadUserTable(page) {
     let fd = new FormData();
@@ -297,7 +315,6 @@ new ApexCharts(document.querySelector("#salesChart"), options).render();
         $('#users_table_body').html('<tr><td colspan="6" class="text-center text-muted py-3">Loading...</td></tr>');
       },
       success: function (response) {
-        // console.log('user response', response);
         let rows = '';
         if (response.results.length > 0) {
           let count = (page - 1) * 10 + 1;
@@ -335,93 +352,6 @@ new ApexCharts(document.querySelector("#salesChart"), options).render();
     });
   }
 
-  // ------------------- REVIEWS PAGINATION -------------------
-  function loadReviews(page = 1) {
-
-    var search = $('#search').val();
-    if (search === '') search = ' ';
-    if (search == undefined) search = ' ';
-    var fd = new FormData();
-    fd.append('search', search);
-    fd.append('p', page);
-    fd.append('page_size', 5);
-    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
-
-    $.ajax({
-      url: hosturl + "/api/ReviewsAndRating/reviews_and_rating_list_pagination_api?page_size=5?p=" + page,
-      data: fd,
-      headers: { "Authorization": "Bearer {{token}}" },
-      type: 'POST',
-      processData: false,
-      contentType: false,
-      beforeSend: function () {
-        swal({
-          icon: "info",
-          title: "",
-          text: "Loading...",
-          buttons: false,
-        });
-      },
-      success: function (response) {
-        // console.log('response re', response)
-        swal.close();
-        var infohtml = '';
-
-        if (response.count && response.count != 0) {
-          $.each(response.results, function (i, o) {
-            infohtml += `
-                        <li class="d-flex mb-4 align-items-start pb-2 border-bottom">
-                            <div class="flex-shrink-0 me-4">
-                                <img src="${o.user_image ? hosturl + o.user_image : '{% static "assets/img/avatars/1.png" %}'}" 
-                                     class="rounded-circle" alt="user" width="45" height="45">
-                            </div>
-                            <div class="d-flex w-100 align-items-start justify-content-between gap-2">
-                                <div class="me-2">
-                                    <h6 class="mb-1">${o.user_name || ''}</h6>
-                                    <div class="text-warning mb-1">
-                                            ${Array(5).fill(0).map((_, index) => `
-                                                <i class="text-danger ${index < o.rating_count ? 'ri-star-fill' : 'ri-star-line'}"></i>
-                                            `).join("\n")}
-
-                                    </div>
-                                    <p class="mb-0 text-muted small">“${o.description || ''}”</p>
-                                    <small class="text-secondary">${o.created_at ? o.created_at : ''}</small>
-                                </div>
-                                    <i class="ri-delete-bin-6-line me-1 cursor-pointer" onclick="delete_reviewsandrating('${o.id}')"></i>
-                            </div>
-                        </li>
-                    `;
-          });
-
-          $('#reviewsandrating').html(infohtml);
-
-          // Setup pagination
-          var totalPages = Math.ceil(parseInt(response.count) / 5);
-          $('#reviews-pagination').twbsPagination('destroy'); // destroy old instance
-          $('#reviews-pagination').twbsPagination({
-            totalPages: totalPages,
-            visiblePages: 3,
-            startPage: page,
-            next: 'Next',
-            prev: 'Prev',
-            onPageClick: function (event, pg) {
-              if (pg !== page) {
-                loadReviews(pg);
-              }
-            }
-          });
-        } else {
-          $('#reviewsandrating').html('<li class="text-center text-muted">No Data Found</li>');
-          swal({
-            icon: "error",
-            title: "",
-            text: "No Data Found !",
-            button: "Close",
-          });
-        }
-      }
-    });
-  }
 
   // ------------------- RENDER PAGINATION FUNCTION -------------------
   function renderPagination(container, totalPages, currentPage, callback) {
@@ -441,78 +371,6 @@ new ApexCharts(document.querySelector("#salesChart"), options).render();
     }
     $(container).html(html);
   }
-  function delete_reviewsandrating(id) {
-    swal({
-      title: "Are you sure?",
-      text: "you want to delete it .",
-      icon: "warning",
-      buttons: true,
-      dangerMode: true
-    })
-      .then((willDelete) => {
-        if (willDelete) {
-          $.ajax({
-            url: hosturl + "/api/ReviewsAndRating/reviews_and_ratingdelete",
-            type: 'POST',
-            headers: {
-              'Authorization': 'Bearer {{token}}'
-            },
-            data: {
-              csrfmiddlewaretoken: '{{ csrf_token }}',
-              'reviews_and_rating_id': id
-            },
-            dataType: 'json',
-            beforeSend: function () {
-
-
-
-            },
-            success: function (response) {
-              // Pagination()
-              if (response['response']['n'] == 1) {
-                swal({
-                  icon: "success",
-                  title: "",
-                  text: response['response']['msg'],
-                  button: "Close",
-                }).then(() => {
-                  // Code to execute after the user closes the SweetAlert dialog
-                  initReviewPagination(); // Reload the page
-                });
-
-
-
-              }
-              else {
-                swal({
-                  icon: "error",
-                  title: "",
-                  text: response['response']['msg'],
-                  button: "Close",
-                }).then(() => {
-                  // Code to execute after the user closes the SweetAlert dialog
-                  location.reload(); // Reload the page
-                });
-              }
-
-
-
-
-            }
-          });
-
-        }
-      })
-  }
-
-
-
-
-
-
-
-
-
 
 
 

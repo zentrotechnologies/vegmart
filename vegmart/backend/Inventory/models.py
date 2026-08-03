@@ -32,6 +32,8 @@ class Inventory(TrackingModel):
     )
     stock_id = models.CharField(max_length=100)
     unit = models.CharField(max_length=100) #base unit ml/gm
+    unit_cost = models.CharField(max_length=100) 
+    minimum_stock = models.IntegerField() 
 
 
 
