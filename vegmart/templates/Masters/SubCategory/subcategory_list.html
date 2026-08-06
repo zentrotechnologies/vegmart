@@ -34,116 +34,184 @@
 {{block.super}}
 
 <script>
-
 $(document).ready(function () {
-    initPagination();
+
+    let currentPage = 1;
+    let searchTimer = null;
+
+    loadData(1);
+
+    // Search with small delay to avoid API call on every key press
+    $('#search').on('keyup', function () {
+        clearTimeout(searchTimer);
+
+        searchTimer = setTimeout(function () {
+            currentPage = 1;
+            loadData(1);
+        }, 400);
+    });
 });
 
-// 🔹 INIT
-function initPagination() {
-    $('#pagination-demo').html('');
-    loadData(1);
-}
-
-// 🔹 LOAD DATA
 function loadData(page) {
 
-    let search = $('#search').val() || '';
-
-    let fd = new FormData();
-    fd.append('p', page);
-    fd.append('search', search);
-    fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
+    let search = $('#search').val().trim();
 
     $.ajax({
         url: hosturl + "/api/Masters/subcategory_list_pagination_api",
         type: "POST",
-        data: fd,
-        processData: false,
-        contentType: false,
-        beforeSend: function () {
-            swal({ icon: "info", text: "Loading...", buttons: false });
+        data: {
+            p: page,
+            search: search,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
         },
+
+        beforeSend: function () {
+            swal({
+                icon: "info",
+                text: "Loading...",
+                buttons: false,
+                closeOnClickOutside: false
+            });
+        },
+
         success: function (res) {
+
             swal.close();
 
             let html = "";
+            let results = res.results || [];
 
-            if (res.results.length > 0) {
+            if (results.length > 0) {
 
-                $.each(res.results, function (i, o) {
+                $.each(results, function (i, o) {
                     html += `
-                    <tr>
-                        <td>${o.name}</td>
-                        <td>${o.category_name}</td>
-                        <td>
-                            <a href="/masters/edit-subcategory/${o.id}" class="btn btn-warning btn-sm">Edit</a>
-                            <button onclick="delete_subcategory(${o.id})" class="btn btn-danger btn-sm">Delete</button>
-                        </td>
-                    </tr>`;
-                });
+                        <tr>
+                            <td>${o.name || '-'}</td>
+                            <td>${o.category_name || '-'}</td>
+                            <td>
+                                <a href="/masters/edit-subcategory/${o.id}"
+                                   class="btn btn-warning btn-sm">
+                                    Edit
+                                </a>
 
-                $("#table_body").html(html);
-
-                // 🔥 PAGINATION SETUP
-                let totalPages = Math.ceil(res.count / 10);
-
-                $('#pagination-demo').twbsPagination('destroy');
-
-                $('#pagination-demo').twbsPagination({
-                    totalPages: totalPages,
-                    visiblePages: 3,
-                    next: 'Next',
-                    prev: 'Prev',
-                    onPageClick: function (event, p) {
-                        loadData(p);
-                    }
+                                <button type="button"
+                                        onclick="delete_subcategory(${o.id})"
+                                        class="btn btn-danger btn-sm">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
                 });
 
             } else {
-                $("#table_body").html(`
+                html = `
                     <tr>
-                        <td colspan="3" class="text-center">No Data Found</td>
+                        <td colspan="3" class="text-center">
+                            No Data Found
+                        </td>
                     </tr>
-                `);
+                `;
             }
+
+            $("#table_body").html(html);
+
+            setupPagination(res.count || 0, page);
+        },
+
+        error: function (xhr) {
+            swal.close();
+
+            console.error(xhr.responseText);
+
+            $("#table_body").html(`
+                <tr>
+                    <td colspan="3" class="text-center text-danger">
+                        Unable to load data
+                    </td>
+                </tr>
+            `);
+
+            swal("Error", "Something went wrong while loading data.", "error");
         }
     });
 }
 
-// 🔹 SEARCH
-$('#search').on('keyup', function () {
-    initPagination();
-});
+function setupPagination(totalRecords, currentPage) {
 
-// 🔹 DELETE
-function delete_subcategory(id){
+    let pageSize = 10;
+    let totalPages = Math.ceil(totalRecords / pageSize);
+
+    // Remove old pagination safely
+    if ($('#pagination-demo').data('twbs-pagination')) {
+        $('#pagination-demo').twbsPagination('destroy');
+    }
+
+    $('#pagination-demo').empty();
+
+    // Do not initialize pagination when there are no records
+    if (totalPages <= 0) {
+        return;
+    }
+
+    $('#pagination-demo').twbsPagination({
+        totalPages: totalPages,
+        startPage: Math.min(currentPage, totalPages),
+        visiblePages: Math.min(3, totalPages),
+        next: 'Next',
+        prev: 'Prev',
+        initiateStartPageClick: false,
+
+        onPageClick: function (event, page) {
+            loadData(page);
+        }
+    });
+}
+
+function delete_subcategory(id) {
+
     swal({
-        title:"Are you sure?",
-        text:"You want to delete it",
-        icon:"warning",
-        buttons:true
-    }).then((ok)=>{
-        if(ok){
-            $.ajax({
-                url: hosturl + "/api/Masters/subcategorydelete",
-                type:"POST",
-                data:{
-                    csrfmiddlewaretoken:'{{csrf_token}}',
-                    subcategoryid:id
-                },
-                success:function(res){
-                    if(res.response.n==1){
-                        swal("Deleted",res.response.msg,"success");
-                        initPagination(); // reload page 1
-                    }else{
-                        swal("Error",res.response.msg,"error");
-                    }
-                }
-            });
+        title: "Are you sure?",
+        text: "Do you want to delete this subcategory?",
+        icon: "warning",
+        buttons: ["Cancel", "Delete"],
+        dangerMode: true
+    }).then(function (confirmed) {
+
+        if (!confirmed) {
+            return;
         }
+
+        $.ajax({
+            url: hosturl + "/api/Masters/subcategorydelete",
+            type: "POST",
+            data: {
+                csrfmiddlewaretoken: '{{ csrf_token }}',
+                subcategoryid: id
+            },
+
+            success: function (res) {
+
+                if (res.response && res.response.n == 1) {
+                    swal("Deleted", res.response.msg, "success")
+                        .then(function () {
+                            loadData(1);
+                        });
+                } else {
+                    let message = res.response
+                        ? res.response.msg
+                        : "Unable to delete subcategory.";
+
+                    swal("Error", message, "error");
+                }
+            },
+
+            error: function (xhr) {
+                console.error(xhr.responseText);
+                swal("Error", "Something went wrong while deleting.", "error");
+            }
+        });
     });
 }
-
 </script>
 {% endblock %}

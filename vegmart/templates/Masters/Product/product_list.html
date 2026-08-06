@@ -76,7 +76,7 @@ function loadData(page){
                     <tr>
                         <td>
                             <div class="d-flex">
-                                <div><img src="${o.image}" width="50"></div>
+                                <div><img src="${o.image || hosturl+"/static/assets/img/backgrounds/dummy.jpg"}" width="50"></div>
                                 <div>${o.product_name}</div>
                             </div>
                         </td>
@@ -142,7 +142,7 @@ function loadData(page){
 
             if (res.response.n == 1) {
               swal("Deleted", res.response.msg, "success");
-              loadData();
+              loadData(1);
             } else {
               swal("Error", res.response.msg, "error");
             }

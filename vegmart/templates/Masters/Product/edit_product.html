@@ -58,16 +58,16 @@
     <h5>Variants</h5>
 
     <div class="row mb-3">
-      <div class="col"><input id="pack_size" class="form-control" placeholder="Pack Size"></div>
+      <div class="col"><input id="pack_size" class="form-control" placeholder="Pack Size" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
       <div class="col"><input id="pack_type" class="form-control" placeholder="Pack Type"></div>
-      <div class="col"><input id="fat" class="form-control" placeholder="Fat"></div>
-      <div class="col"><input id="snf" class="form-control" placeholder="SNF"></div>
+      <div class="col"><input id="fat" class="form-control" placeholder="Fat" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
+      <div class="col"><input id="snf" class="form-control" placeholder="SNF" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
     </div>
 
     <div class="row mb-3">
-      <div class="col"><input id="gst_rate" class="form-control" placeholder="GST %"></div>
-      <div class="col"><input id="mrp" class="form-control" placeholder="MRP"></div>
-      <div class="col"><input id="b2b_price" class="form-control" placeholder="B2B Price"></div>
+      <div class="col"><input id="gst_rate" class="form-control" placeholder="GST %" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
+      <div class="col"><input id="mrp" class="form-control" placeholder="MRP" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
+      <div class="col"><input id="b2b_price" class="form-control" placeholder="B2B Price" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"></div>
       <div class="col"><input type="file" id="image" class="form-control"></div>
       <div class="col">
         <button class="btn btn-success" onclick="addVariant()">Add</button>
