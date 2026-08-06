@@ -66,6 +66,9 @@
     border-bottom: 1px solid #eee;
     padding: 6px 0;
   }
+  .input-group {
+    min-width: 130px;
+  }
 </style>
 
 <div class="container-fluid">
@@ -306,7 +309,6 @@
 
 html += `
 <tr>
-
     <td>
         <div class="fw-bold">
             ${item.name}
@@ -316,11 +318,29 @@ html += `
         </div>
 
         <div class="small">
-            Qty : <b>${qty}</b>
+            Qty: <b>${qty}</b>
         </div>
     </td>
 
     <td>
+        <label class="small mb-1">
+            Price including GST
+        </label>
+
+        <div class="input-group input-group-sm mb-1">
+            <span class="input-group-text px-1">₹</span>
+
+            <input
+                type="number"
+                class="form-control"
+                value="${priceInc.toFixed(2)}"
+                min="0"
+                step="0.01"
+                onchange="updateItemPrice(
+                    '${item.product_variant}',
+                    this.value
+                )">
+        </div>
 
         <div class="small">
             Ex GST:
@@ -328,21 +348,14 @@ html += `
         </div>
 
         <div class="small">
-            GST(${item.gst_percentage}%):
+            GST (${item.gst_percentage}%):
             <b>₹${gstAmount.toFixed(2)}</b>
         </div>
-
-        <div class="small">
-            Inc GST:
-            <b>₹${priceInc.toFixed(2)}</b>
-        </div>
-
     </td>
 
     <td class="text-end align-middle">
         <strong>₹${lineTotal.toFixed(2)}</strong>
     </td>
-
 </tr>
 `;
 
@@ -515,13 +528,19 @@ $("#gst_classification").html(gstHtml);
     products.forEach(v => {
       var price_with_gst = parseFloat(v.b2b_price);
       var gst_percentage = parseFloat(v.gst_rate);
-      var price_without_gst = (
-        price_with_gst / (1 + gst_percentage / 100)
-      ).toFixed(2);
-      var gst_amount = (
-        price_with_gst - price_without_gst
-      ).toFixed(2);
+      var price_without_gst = parseFloat(
+        (
+          price_with_gst /
+          (1 + gst_percentage / 100)
+        ).toFixed(2)
+      );
 
+var gst_amount = parseFloat(
+  (
+    price_with_gst -
+    price_without_gst
+  ).toFixed(2)
+);
 
       variants[v.id] = {
         price: price_with_gst,
@@ -797,7 +816,53 @@ $("#gst_classification").html(gstHtml);
       }
     });
   }
+function updateItemPrice(productVariantId, newPrice) {
+  newPrice = parseFloat(newPrice);
 
+  if (isNaN(newPrice) || newPrice < 0) {
+    swal("Validation Error", "Please enter a valid price", "warning");
+    renderCart();
+    return;
+  }
+
+  let item = cart.find(
+    x => String(x.product_variant) === String(productVariantId)
+  );
+
+  if (!item) {
+    return;
+  }
+
+  let gstPercentage = parseFloat(item.gst_percentage) || 0;
+
+  let priceWithoutGst =
+    newPrice / (1 + gstPercentage / 100);
+
+  let gstAmount =
+    newPrice - priceWithoutGst;
+
+  item.price = parseFloat(newPrice.toFixed(2));
+  item.price_without_gst = parseFloat(
+    priceWithoutGst.toFixed(2)
+  );
+  item.gst_amount = parseFloat(
+    gstAmount.toFixed(2)
+  );
+
+  /*
+   * Update variant data also, so the edited price
+   * remains available while changing quantity.
+   */
+  if (variants[productVariantId]) {
+    variants[productVariantId].price = item.price;
+    variants[productVariantId].price_without_gst =
+      item.price_without_gst;
+    variants[productVariantId].gst_amount =
+      item.gst_amount;
+  }
+
+  renderCart();
+}
 
 </script>
 {% endblock %}

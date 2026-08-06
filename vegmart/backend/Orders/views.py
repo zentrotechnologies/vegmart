@@ -61,7 +61,7 @@ class createorder(GenericAPIView):
 
         # 🔥 PRICE CALCULATION
         for item in items:
-
+            
             variant_id = item.get('product_variant')
             qty = int(item.get('quantity'))
             price = int(item.get('price'))
