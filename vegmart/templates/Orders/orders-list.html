@@ -603,11 +603,11 @@
 
                 let paid = o.paid_amount || 0;
                 let credit = grand_total - paid;
-
+let invoiceFileName = `Invoice-${o.id}-${Date.now()}`;
                 let html = `
         <html>
         <head>
-            <title>Invoice</title>
+            <title>${invoiceFileName}</title>
 
             <style>
                 body{
@@ -767,10 +767,20 @@
         </html>
         `;
 
-                let w = window.open('');
-                w.document.write(html);
-                w.print();
-                w.close();
+let w = window.open('', '_blank');
+w.document.open();
+w.document.write(html);
+w.document.close();
+
+w.onload = function () {
+    w.focus();
+
+    w.onafterprint = function () {
+        w.close();
+    };
+
+    w.print();
+};
             });
     }
     // =====================================================

@@ -14,6 +14,11 @@ from User.jwt import userJWTAuthentication
 from rest_framework import permissions
 from Production.views import convert_to_base_unit
 from django.db.models import Sum
+# from helpers.custom_functions import *
+import json
+from datetime import date, datetime, timedelta
+
+
 # 🔥 SAFE FLOAT
 def to_float(val, default=0):
     try:
@@ -33,6 +38,7 @@ class createorder(GenericAPIView):
 
         customer_id = request.data.get('customer_id')
         payment_mode = request.data.get('payment_mode')
+        delivery_date = request.data.get('delivery_date')
         paid_amount = to_float(request.data.get('paid_amount'))
 
         items = request.data.get('items')
@@ -101,7 +107,16 @@ class createorder(GenericAPIView):
         # 🔥 DUE DATE
         due_date = None
         if credit_amount > 0:
-            due_date = datetime.date.today() + datetime.timedelta(days=customer.default_credit_days)
+            # due_date = datetime.date.today() + datetime.timedelta(days=customer.default_credit_days)
+            due_date = date.today() + timedelta(days=customer.default_credit_days or 0)
+        if delivery_date:
+            delivery_date = datetime.strptime(
+                delivery_date,
+                '%d-%m-%Y'
+            ).strftime('%Y-%m-%d')
+        else:
+            delivery_date=None
+
 
         # 🔥 CREATE ORDER
         order = Order.objects.create(
@@ -113,7 +128,8 @@ class createorder(GenericAPIView):
             paid_amount=paid_amount,
             credit_amount=credit_amount,
             due_date=due_date,
-            status='placed'
+            status='placed',
+            delivery_date=delivery_date
         )
 
         # 🔥 CREATE ITEMS
@@ -179,7 +195,12 @@ class orderdetails(GenericAPIView):
     def post(self, request):
 
         order_id = request.data.get('order_id')
-
+        print("order_id",order_id)
+        if order_id is None or order_id =="":
+            return Response({
+                "data":{},
+                "response": {"n": 0, "msg": "Order id not found", "status": "error"}
+            })
         order = Order.objects.filter(id=order_id).first()
 
         items = OrderItem.objects.filter(order=str(order_id))

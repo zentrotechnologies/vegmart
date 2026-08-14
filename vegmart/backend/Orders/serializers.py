@@ -56,6 +56,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model= OrderItem
         fields='__all__'
 class CustomOrderItemSerializer(serializers.ModelSerializer):
+
+
     product_name = serializers.SerializerMethodField()
     def get_product_name(self, obj):
         obj_id = obj.product
@@ -96,9 +98,9 @@ class CustomOrderItemSerializer(serializers.ModelSerializer):
             try:
                 obj = Product.objects.filter(id=obj_id).first()
                 if obj is not None:
+                    print("obj",obj.unit)
                     unit_obj=UnitMaster.objects.filter(id=obj.unit).first()
                     if unit_obj is not None:
-                        
                         return unit_obj.short_name
                     else:
                         return None

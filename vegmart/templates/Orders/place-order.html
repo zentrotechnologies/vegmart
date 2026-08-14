@@ -160,7 +160,7 @@
           </select>
 
           <input id="paid" class="form-control mb-2" placeholder="Paid Amount">
-
+          <input id="delivery_date" class="form-control datepicker mb-2" placeholder="Delivery Date">
           <button class="btn btn-success w-100" onclick="saveOrder()">
             Save Order
           </button>
@@ -626,6 +626,14 @@ var gst_amount = parseFloat(
       );
       return;
     }
+    if (!$("#delivery_date").val()) {
+      swal(
+        "Error",
+        "Please Delivery Date",
+        "error"
+      );
+      return;
+    }
     if (cart.length === 0) {
       swal("Error", "Select products", "error");
       return;
@@ -636,6 +644,7 @@ var gst_amount = parseFloat(
     fd.append('csrfmiddlewaretoken', '{{csrf_token}}');
     fd.append('customer_id', $("#customer").val());
     fd.append('payment_mode', $("#payment_mode").val());
+    fd.append('delivery_date', $("#delivery_date").val());
     fd.append('paid_amount', $("#paid").val());
     fd.append('items', JSON.stringify(cart));
 
